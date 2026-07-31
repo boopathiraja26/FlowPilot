@@ -1,35 +1,71 @@
 import { Request, Response } from "express";
 
-/**
- * Auth controller STRUCTURE ONLY.
- * These handlers are placeholders for a future phase - no password
- * hashing, DB lookups, or token issuance is implemented here yet.
- */
+import { asyncHandler } from "../middleware/asyncHandler";
+import { ApiError } from "../middleware/errorHandler";
+import { registerSchema, loginSchema } from "../validators/auth.validation";
+import { registerUser, loginUser } from "../services/auth.service";
+import { jwtConfig } from "../config/jwt";
+import { env } from "../config/env";
 
-export function register(_req: Request, res: Response): void {
-  res.status(501).json({
-    success: false,
-    message: "Register endpoint not implemented yet",
+// =========================================================
+// Helpers
+// =========================================================
+
+function setAccessTokenCookie(res: Response, accessToken: string): void {
+  res.cookie(jwtConfig.cookieNames.accessToken, accessToken, {
+    httpOnly: true,
+    secure: env.isProduction,
+    sameSite: "lax",
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   });
 }
 
-export function login(_req: Request, res: Response): void {
-  res.status(501).json({
-    success: false,
-    message: "Login endpoint not implemented yet",
-  });
-}
+// =========================================================
+// POST /api/auth/register
+// =========================================================
 
-export function logout(_req: Request, res: Response): void {
-  res.status(501).json({
-    success: false,
-    message: "Logout endpoint not implemented yet",
-  });
-}
+export const register = asyncHandler(async (req: Request, res: Response) => {
+  const parsed = registerSchema.safeParse(req.body);
 
-export function getCurrentUser(_req: Request, res: Response): void {
-  res.status(501).json({
-    success: false,
-    message: "Current user endpoint not implemented yet",
+  if (!parsed.success) {
+    throw new ApiError(400, "Validation failed", parsed.error.flatten().fieldErrors);
+  }
+
+  const { user, accessToken } = await registerUser(parsed.data);
+
+  setAccessTokenCookie(res, accessToken);
+
+  res.status(201).json({
+    success: true,
+    message: "Account created successfully",
+    data: {
+      user,
+      accessToken,
+    },
   });
-}
+});
+
+// =========================================================
+// POST /api/auth/login
+// =========================================================
+
+export const login = asyncHandler(async (req: Request, res: Response) => {
+  const parsed = loginSchema.safeParse(req.body);
+
+  if (!parsed.success) {
+    throw new ApiError(400, "Validation failed", parsed.error.flatten().fieldErrors);
+  }
+
+  const { user, accessToken } = await loginUser(parsed.data);
+
+  setAccessTokenCookie(res, accessToken);
+
+  res.status(200).json({
+    success: true,
+    message: "Logged in successfully",
+    data: {
+      user,
+      accessToken,
+    },
+  });
+});
