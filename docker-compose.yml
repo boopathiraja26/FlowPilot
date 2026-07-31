@@ -1,0 +1,42 @@
+# =========================================================
+# FlowPilot - docker-compose PLACEHOLDER
+# Not implemented yet. This file only reserves the intended
+# shape of the stack for a future phase (containerization).
+# Do not `docker compose up` this file expecting a working stack.
+# =========================================================
+version: "3.9"
+
+services:
+  client:
+    build:
+      context: ./client
+    # image: flowpilot-client
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./client/.env.local
+    depends_on:
+      - server
+    # placeholder - Dockerfile not created yet
+
+  server:
+    build:
+      context: ./server
+    # image: flowpilot-server
+    ports:
+      - "5000:5000"
+    env_file:
+      - ./server/.env
+    # placeholder - Dockerfile not created yet
+
+  # database:
+  #   image: postgres:16-alpine
+  #   placeholder for a future phase
+
+  # cache:
+  #   image: redis:7-alpine
+  #   placeholder for a future phase
+
+networks:
+  default:
+    name: flowpilot-network
