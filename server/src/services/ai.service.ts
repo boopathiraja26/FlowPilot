@@ -1,4 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
+import { Prisma, Workflow, WorkflowStep } from "@prisma/client";
+import prisma from "../lib/prisma";
 
 import { ApiError } from "../middleware/errorHandler";
 import {
@@ -119,13 +121,9 @@ export async function generateWorkflowFromPrompt(
         temperature: 0.4,
       },
     });
-  } catch (error) {
-  console.error("========== GEMINI ERROR ==========");
-  console.error(error);
-  console.error("==================================");
-
-  throw error;
-}
+  } catch {
+    throw new ApiError(502, "Failed to reach the AI provider. Please try again.");
+  }
 
   const rawText = response.text;
 
@@ -146,4 +144,54 @@ export async function generateWorkflowFromPrompt(
     ...workflow,
     steps: normalizedSteps,
   };
+}
+
+// =========================================================
+// saveGeneratedWorkflow
+// =========================================================
+
+export interface SavedWorkflow extends Workflow {
+  steps: WorkflowStep[];
+}
+
+export async function saveGeneratedWorkflow(
+  userId: string,
+  workflow: GeneratedWorkflow
+): Promise<SavedWorkflow> {
+  try {
+    const savedWorkflow = await prisma.$transaction(async (tx) => {
+      const createdWorkflow = await tx.workflow.create({
+        data: {
+          title: workflow.title,
+          description: workflow.description ?? null,
+          status: "DRAFT",
+          userId,
+        },
+      });
+
+      await tx.workflowStep.createMany({
+        data: workflow.steps.map((step) => ({
+          workflowId: createdWorkflow.id,
+          stepOrder: step.order,
+          type: step.type,
+          name: step.name,
+          config: step.config as Prisma.InputJsonValue,
+        })),
+      });
+
+      const steps = await tx.workflowStep.findMany({
+        where: { workflowId: createdWorkflow.id },
+        orderBy: { stepOrder: "asc" },
+      });
+
+      return {
+        ...createdWorkflow,
+        steps,
+      };
+    });
+
+    return savedWorkflow;
+  } catch {
+    throw new ApiError(500, "Failed to save the generated workflow. Please try again.");
+  }
 }

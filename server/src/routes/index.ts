@@ -11,9 +11,7 @@ router.use("/health", healthRoutes);
 router.use("/auth", authRoutes);
 router.use("/workflows", workflowRoutes);
 router.use("/ai", aiRoutes);
-router.use("/ai", aiRoutes);
 
-// Base API info route: GET /api
 router.get("/", (_req, res) => {
   res.status(200).json({
     success: true,
