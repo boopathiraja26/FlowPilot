@@ -3,12 +3,15 @@ import { Router } from "express";
 import healthRoutes from "./health.routes";
 import authRoutes from "./auth.routes";
 import workflowRoutes from "./workflow.routes";
+import aiRoutes from "./ai.routes";
 
 const router = Router();
 
 router.use("/health", healthRoutes);
 router.use("/auth", authRoutes);
 router.use("/workflows", workflowRoutes);
+router.use("/ai", aiRoutes);
+router.use("/ai", aiRoutes);
 
 // Base API info route: GET /api
 router.get("/", (_req, res) => {
@@ -20,6 +23,7 @@ router.get("/", (_req, res) => {
       "/api/health",
       "/api/auth",
       "/api/workflows",
+      "/api/ai",
     ],
   });
 });
