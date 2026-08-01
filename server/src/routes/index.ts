@@ -1,11 +1,14 @@
 import { Router } from "express";
+
 import healthRoutes from "./health.routes";
 import authRoutes from "./auth.routes";
+import workflowRoutes from "./workflow.routes";
 
 const router = Router();
 
 router.use("/health", healthRoutes);
 router.use("/auth", authRoutes);
+router.use("/workflows", workflowRoutes);
 
 // Base API info route: GET /api
 router.get("/", (_req, res) => {
@@ -13,7 +16,11 @@ router.get("/", (_req, res) => {
     success: true,
     message: "Welcome to the FlowPilot API",
     version: "1.0.0",
-    endpoints: ["/api/health", "/api/auth"],
+    endpoints: [
+      "/api/health",
+      "/api/auth",
+      "/api/workflows",
+    ],
   });
 });
 
