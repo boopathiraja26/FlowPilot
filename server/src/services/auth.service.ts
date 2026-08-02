@@ -97,11 +97,18 @@ export async function loginUser(input: LoginInput): Promise<AuthResult> {
     );
   }
 
-  const isPasswordValid = await bcrypt.compare(password, user.password);
+  console.log("Email from request:", email);
+console.log("Password from request:", password);
+console.log("User found:", user.email);
+console.log("Stored hash:", user.password);
 
-  if (!isPasswordValid) {
-    throw new ApiError(401, "Invalid email or password");
-  }
+const isPasswordValid = await bcrypt.compare(password, user.password);
+
+console.log("Password valid:", isPasswordValid);
+
+if (!isPasswordValid) {
+  throw new ApiError(401, "Invalid email or password");
+}
 
   const accessToken = generateAccessToken(user);
 

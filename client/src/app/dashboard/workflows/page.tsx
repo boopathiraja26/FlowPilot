@@ -8,7 +8,7 @@ import { WorkflowCard } from "@/components/workflow/WorkflowCard";
 import { api } from "@/lib/api";
 import { Workflow } from "@/types/workflow";
 
-export default function DashboardPage() {
+export default function WorkflowsPage() {
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -43,7 +43,6 @@ export default function DashboardPage() {
     };
   }, []);
 
-  // Placeholder only - delete functionality is not wired up yet
   function handleDelete(workflowId: string): void {
     // eslint-disable-next-line no-console
     console.log("Delete requested for workflow:", workflowId);

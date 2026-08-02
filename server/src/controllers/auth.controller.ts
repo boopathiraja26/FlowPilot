@@ -69,3 +69,20 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     },
   });
 });
+
+// =========================================================
+// POST /api/auth/logout
+// =========================================================
+
+export const logout = asyncHandler(async (_req: Request, res: Response) => {
+  res.clearCookie(jwtConfig.cookieNames.accessToken, {
+    httpOnly: true,
+    secure: env.isProduction,
+    sameSite: "lax",
+  });
+
+  res.status(200).json({
+    success: true,
+    message: "Logged out successfully",
+  });
+});
