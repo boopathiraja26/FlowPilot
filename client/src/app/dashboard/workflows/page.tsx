@@ -43,10 +43,23 @@ export default function WorkflowsPage() {
     };
   }, []);
 
-  function handleDelete(workflowId: string): void {
-    // eslint-disable-next-line no-console
-    console.log("Delete requested for workflow:", workflowId);
+  async function handleDelete(workflowId: string) {
+  const confirmed = window.confirm(
+    "Are you sure you want to delete this workflow?"
+  );
+
+  if (!confirmed) return;
+
+  try {
+    await api.delete(`/workflows/${workflowId}`);
+
+    setWorkflows((prev) =>
+      prev.filter((workflow) => workflow.id !== workflowId)
+    );
+  } catch (error) {
+    alert("Failed to delete workflow.");
   }
+}
 
   return (
     <DashboardShell>
