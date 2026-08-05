@@ -81,13 +81,20 @@ function parseGeneratedWorkflow(rawText: string): GeneratedWorkflow {
 
   try {
     parsedJson = JSON.parse(jsonText);
-  } catch {
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error("[ai.service] Failed to JSON.parse Gemini response:", jsonText, err);
     throw new ApiError(502, "AI response was not valid JSON");
   }
 
   const result = generatedWorkflowSchema.safeParse(parsedJson);
 
   if (!result.success) {
+    // eslint-disable-next-line no-console
+    console.error(
+      "[ai.service] Gemini response failed schema validation:",
+      result.error.flatten().fieldErrors
+    );
     throw new ApiError(
       502,
       "AI response did not match the expected workflow structure",
@@ -121,7 +128,9 @@ export async function generateWorkflowFromPrompt(
         temperature: 0.4,
       },
     });
-  } catch {
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error("[ai.service] Gemini API call failed:", err);
     throw new ApiError(502, "Failed to reach the AI provider. Please try again.");
   }
 
@@ -191,7 +200,9 @@ export async function saveGeneratedWorkflow(
     });
 
     return savedWorkflow;
-  } catch {
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error("[ai.service] Failed to save generated workflow:", err);
     throw new ApiError(500, "Failed to save the generated workflow. Please try again.");
   }
 }

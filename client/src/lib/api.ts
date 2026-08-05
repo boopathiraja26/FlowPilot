@@ -15,7 +15,11 @@ export const api = axios.create({
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // NOTE: no auth/token refresh logic yet - this phase is scaffolding only
+    if (error.response?.status === 401) {
+      if (typeof window !== "undefined") {
+        window.location.href = "/login";
+      }
+    }
     return Promise.reject(error);
   }
 );

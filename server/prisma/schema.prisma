@@ -26,6 +26,12 @@ enum WorkflowStepType {
   WEBHOOK
 }
 
+enum ExecutionStatus {
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
 model User {
   id         String     @id @default(uuid())
   name       String
@@ -51,7 +57,8 @@ model Workflow {
   userId      String
   user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  steps       WorkflowStep[]
+  steps        WorkflowStep[]
+  executions   WorkflowExecution[]
 
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
@@ -77,4 +84,47 @@ model WorkflowStep {
 
   @@index([workflowId])
   @@map("workflow_steps")
+}
+
+model WorkflowExecution {
+  id           String             @id @default(uuid())
+
+  workflowId   String
+  workflow     Workflow           @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  status       ExecutionStatus    @default(RUNNING)
+
+  startedAt    DateTime           @default(now())
+  completedAt  DateTime?
+
+  logs         ExecutionLog[]
+
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  @@index([workflowId])
+  @@map("workflow_executions")
+}
+
+model ExecutionLog {
+  id            String               @id @default(uuid())
+
+  executionId   String
+  execution     WorkflowExecution    @relation(fields: [executionId], references: [id], onDelete: Cascade)
+
+  stepId        String
+  stepName      String
+  stepType      WorkflowStepType
+
+  status        ExecutionStatus
+
+  message       String?
+
+  startedAt     DateTime             @default(now())
+  completedAt   DateTime?
+
+  createdAt     DateTime             @default(now())
+
+  @@index([executionId])
+  @@map("execution_logs")
 }

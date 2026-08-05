@@ -1,12 +1,10 @@
 import { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
-import { PrismaClient } from "@prisma/client";
 
 import { env } from "../config/env";
 import { ApiError } from "./errorHandler";
 import { jwtConfig } from "../config/jwt";
-
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma";
 
 // =========================================================
 // Types

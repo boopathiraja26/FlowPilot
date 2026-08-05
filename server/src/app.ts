@@ -29,7 +29,9 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser(env.cookieSecret));
 
 // Rate limiting on all /api routes
-app.use("/api", apiLimiter);
+if (env.isProduction) {
+  app.use("/api", apiLimiter);
+}
 
 // Routes
 app.use("/api", apiRouter);

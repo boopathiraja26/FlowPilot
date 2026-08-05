@@ -1,12 +1,11 @@
 import bcrypt from "bcrypt";
 import jwt, { SignOptions } from "jsonwebtoken";
-import { PrismaClient, User } from "@prisma/client";
+import { User } from "@prisma/client";
 
 import { env } from "../config/env";
 import { ApiError } from "../middleware/errorHandler";
 import { RegisterInput, LoginInput } from "../validators/auth.validation";
-
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma";
 
 const SALT_ROUNDS = 12;
 
@@ -97,14 +96,7 @@ export async function loginUser(input: LoginInput): Promise<AuthResult> {
     );
   }
 
-  console.log("Email from request:", email);
-console.log("Password from request:", password);
-console.log("User found:", user.email);
-console.log("Stored hash:", user.password);
-
-const isPasswordValid = await bcrypt.compare(password, user.password);
-
-console.log("Password valid:", isPasswordValid);
+  const isPasswordValid = await bcrypt.compare(password, user.password);
 
 if (!isPasswordValid) {
   throw new ApiError(401, "Invalid email or password");

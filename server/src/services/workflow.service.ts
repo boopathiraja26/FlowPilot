@@ -1,9 +1,14 @@
-import { PrismaClient, Workflow } from "@prisma/client";
+import { Workflow, WorkflowStep } from "@prisma/client";
 
 import { ApiError } from "../middleware/errorHandler";
 import { CreateWorkflowInput, UpdateWorkflowInput } from "../validators/workflow.validation";
+import prisma from "../lib/prisma";
 
-const prisma = new PrismaClient();
+// =========================================================
+// Types
+// =========================================================
+
+export type WorkflowWithSteps = Workflow & { steps: WorkflowStep[] };
 
 // =========================================================
 // Helpers
@@ -12,9 +17,14 @@ const prisma = new PrismaClient();
 async function findOwnedWorkflowOrThrow(
   workflowId: string,
   userId: string
-): Promise<Workflow> {
+): Promise<WorkflowWithSteps> {
   const workflow = await prisma.workflow.findUnique({
     where: { id: workflowId },
+    include: {
+      steps: {
+        orderBy: { stepOrder: "asc" },
+      },
+    },
   });
 
   if (!workflow) {
@@ -35,13 +45,18 @@ async function findOwnedWorkflowOrThrow(
 export async function createWorkflow(
   userId: string,
   input: CreateWorkflowInput
-): Promise<Workflow> {
+): Promise<WorkflowWithSteps> {
   const workflow = await prisma.workflow.create({
     data: {
       title: input.title,
       description: input.description ?? null,
       status: input.status ?? "DRAFT",
       userId,
+    },
+    include: {
+      steps: {
+        orderBy: { stepOrder: "asc" },
+      },
     },
   });
 
@@ -52,10 +67,15 @@ export async function createWorkflow(
 // getWorkflows
 // =========================================================
 
-export async function getWorkflows(userId: string): Promise<Workflow[]> {
+export async function getWorkflows(userId: string): Promise<WorkflowWithSteps[]> {
   const workflows = await prisma.workflow.findMany({
     where: { userId },
     orderBy: { createdAt: "desc" },
+    include: {
+      steps: {
+        orderBy: { stepOrder: "asc" },
+      },
+    },
   });
 
   return workflows;
@@ -68,7 +88,7 @@ export async function getWorkflows(userId: string): Promise<Workflow[]> {
 export async function getWorkflowById(
   userId: string,
   workflowId: string
-): Promise<Workflow> {
+): Promise<WorkflowWithSteps> {
   return findOwnedWorkflowOrThrow(workflowId, userId);
 }
 
@@ -80,7 +100,7 @@ export async function updateWorkflow(
   userId: string,
   workflowId: string,
   input: UpdateWorkflowInput
-): Promise<Workflow> {
+): Promise<WorkflowWithSteps> {
   await findOwnedWorkflowOrThrow(workflowId, userId);
 
   const updatedWorkflow = await prisma.workflow.update({
@@ -89,6 +109,11 @@ export async function updateWorkflow(
       ...(input.title !== undefined ? { title: input.title } : {}),
       ...(input.description !== undefined ? { description: input.description } : {}),
       ...(input.status !== undefined ? { status: input.status } : {}),
+    },
+    include: {
+      steps: {
+        orderBy: { stepOrder: "asc" },
+      },
     },
   });
 

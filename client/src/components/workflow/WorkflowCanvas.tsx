@@ -44,7 +44,8 @@ interface WorkflowCanvasProps {
 
   onNodeDragStop?: (
     event: React.MouseEvent,
-    node: Node<WorkflowStepNodeData>
+    node: Node<WorkflowStepNodeData>,
+    allNodes: Node<WorkflowStepNodeData>[]
   ) => void;
 
   onConnect?: (connection: Connection) => void;
@@ -92,11 +93,11 @@ export function WorkflowCanvas({
   const handleNodeDragStop = useCallback(
     (
       event: React.MouseEvent,
-      node: Node<WorkflowStepNodeData>
+      node: Node
     ) => {
-      onNodeDragStop?.(event, node);
+      onNodeDragStop?.(event, node as Node<WorkflowStepNodeData>, nodes);
     },
-    [onNodeDragStop]
+    [onNodeDragStop, nodes]
   );
 
   // =========================================================
@@ -146,8 +147,17 @@ export function WorkflowCanvas({
     <div className="h-full w-full rounded-xl overflow-hidden">
       <ReactFlowProvider>
         <ReactFlow
-          nodes={nodes}
-          edges={edges}
+  nodes={nodes}
+  edges={edges}
+  onNodeClick={(_, node) => {
+    onNodesChange?.([
+      {
+        id: node.id,
+        type: "select",
+        selected: true,
+      },
+    ]);
+  }}
           nodeTypes={nodeTypes}
           onNodesChange={handleNodesChange}
           onEdgesChange={handleEdgesChange}
