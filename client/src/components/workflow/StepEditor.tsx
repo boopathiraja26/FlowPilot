@@ -3,20 +3,12 @@
 import { useEffect, useState } from "react";
 import { WorkflowStep, WorkflowStepType } from "@/types/workflow";
 
-// =========================================================
-// Values handed back to the parent on save
-// =========================================================
-
 export interface StepEditorValues {
   name: string;
   type: WorkflowStepType;
   description: string;
   config: Record<string, unknown>;
 }
-
-// =========================================================
-// Props
-// =========================================================
 
 interface StepEditorProps {
   step: WorkflowStep;
@@ -33,10 +25,6 @@ const STEP_TYPE_OPTIONS: WorkflowStepType[] = [
   "WEBHOOK",
 ];
 
-// =========================================================
-// StepEditor
-// =========================================================
-
 export function StepEditor({
   step,
   onSave,
@@ -45,43 +33,95 @@ export function StepEditor({
 }: StepEditorProps) {
   const [name, setName] = useState(step.name);
   const [type, setType] = useState<WorkflowStepType>(step.type);
-  const [description, setDescription] = useState(
-    typeof step.config?.description === "string"
-      ? step.config.description
-      : ""
-  );
 
-  const [configText, setConfigText] = useState(
-    JSON.stringify(step.config ?? {}, null, 2)
-  );
+  const [description, setDescription] = useState("");
 
+  const [prompt, setPrompt] = useState("");
+
+  const [emailTo, setEmailTo] = useState("");
+  const [emailSubject, setEmailSubject] = useState("");
+  const [emailBody, setEmailBody] = useState("");
+
+  const [delayMs, setDelayMs] = useState(5000);
+
+  const [webhookUrl, setWebhookUrl] = useState("");
+  const [webhookMethod, setWebhookMethod] = useState("POST");
+
+  const [triggerType, setTriggerType] = useState("");
+  const [formId, setFormId] = useState("");
+
+  const [configText, setConfigText] = useState("");
   const [configError, setConfigError] = useState<string | null>(null);
 
-  // =========================================================
-  // Update editor whenever a different step is selected
-  // =========================================================
-
   useEffect(() => {
-    setName(step.name);
+    const config = (step.config ?? {}) as Record<string, unknown>;
 
+    setName(step.name);
     setType(step.type);
 
     setDescription(
-      typeof step.config?.description === "string"
-        ? step.config.description
+      typeof config.description === "string"
+        ? config.description
         : ""
     );
 
-    setConfigText(
-      JSON.stringify(step.config ?? {}, null, 2)
+    setPrompt(
+      typeof config.prompt === "string"
+        ? config.prompt
+        : ""
     );
 
+    setEmailTo(
+      typeof config.to === "string"
+        ? config.to
+        : ""
+    );
+
+    setEmailSubject(
+      typeof config.subject === "string"
+        ? config.subject
+        : ""
+    );
+
+    setEmailBody(
+      typeof config.body === "string"
+        ? config.body
+        : ""
+    );
+
+    setDelayMs(
+      typeof config.milliseconds === "number"
+        ? config.milliseconds
+        : 5000
+    );
+
+    setWebhookUrl(
+      typeof config.url === "string"
+        ? config.url
+        : ""
+    );
+
+    setWebhookMethod(
+      typeof config.method === "string"
+        ? config.method
+        : "POST"
+    );
+
+    setTriggerType(
+      typeof config.trigger_type === "string"
+        ? config.trigger_type
+        : ""
+    );
+
+    setFormId(
+      typeof config.form_id === "string"
+        ? config.form_id
+        : ""
+    );
+
+    setConfigText(JSON.stringify(config, null, 2));
     setConfigError(null);
   }, [step]);
-
-  // =========================================================
-  // Config validation
-  // =========================================================
 
   function handleConfigChange(value: string) {
     setConfigText(value);
@@ -94,174 +134,229 @@ export function StepEditor({
     }
   }
 
-  // =========================================================
-  // Save
-  // =========================================================
-
   function handleSave() {
-    let parsedConfig: Record<string, unknown>;
+    let config: Record<string, unknown> = {};
 
-    try {
-      parsedConfig = JSON.parse(configText);
-    } catch {
-      setConfigError("Config must be valid JSON.");
-      return;
+    switch (type) {
+      case "AI":
+        config.prompt = prompt;
+        break;
+
+      case "EMAIL":
+        config.to = emailTo;
+        config.subject = emailSubject;
+        config.body = emailBody;
+        break;
+
+      case "DELAY":
+        config.milliseconds = delayMs;
+        break;
+
+      case "WEBHOOK":
+        config.url = webhookUrl;
+        config.method = webhookMethod;
+        break;
+
+      case "TRIGGER":
+        config.trigger_type = triggerType;
+        config.form_id = formId;
+        break;
     }
 
-    if (!name.trim()) return;
+    try {
+      const raw = JSON.parse(configText);
+      config = {
+        ...raw,
+        ...config,
+      };
+    } catch {}
 
-    // Store description inside config
-    parsedConfig.description = description.trim();
+    config.description = description;
 
     onSave({
-      name: name.trim(),
+      name,
       type,
-      description: description.trim(),
-      config: parsedConfig,
+      description,
+      config,
     });
   }
 
   const isSaveDisabled =
-    isSaving || Boolean(configError) || !name.trim();
+  isSaving ||
+  Boolean(configError) ||
+  !name.trim();
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-6">
+
       <div className="mb-5 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-gray-900">
+        <h3 className="text-sm font-semibold">
           Edit Step
         </h3>
 
-        <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-[11px] font-medium text-gray-500">
+        <span className="rounded-full bg-gray-100 px-3 py-1 text-xs">
           Step {step.stepOrder}
         </span>
       </div>
 
-      <div className="flex flex-col gap-4">
-        {/* Name */}
+      <div className="space-y-4">
 
-        <div className="flex flex-col gap-1.5">
-          <label
-            htmlFor="step-name"
-            className="text-sm font-medium text-gray-700"
-          >
-            Name
-          </label>
+        <input
+          value={name}
+          disabled={isSaving}
+          onChange={(e)=>setName(e.target.value)}
+          placeholder="Step Name"
+          className="w-full rounded-lg border px-3 py-2"
+        />
 
+        <select
+          value={type}
+          disabled={isSaving}
+          onChange={(e)=>setType(e.target.value as WorkflowStepType)}
+          className="w-full rounded-lg border px-3 py-2"
+        >
+          {STEP_TYPE_OPTIONS.map(type=>(
+            <option key={type}>
+              {type}
+            </option>
+          ))}
+        </select>
+
+        <textarea
+          value={description}
+          disabled={isSaving}
+          rows={3}
+          onChange={(e)=>setDescription(e.target.value)}
+          placeholder="Description"
+          className="w-full rounded-lg border px-3 py-2"
+        />
+
+        {type==="AI" && (
+          <textarea
+            rows={5}
+            value={prompt}
+            onChange={(e)=>setPrompt(e.target.value)}
+            placeholder="AI Prompt"
+            className="w-full rounded-lg border px-3 py-2"
+          />
+        )}
+
+        {type==="EMAIL" && (
+          <div className="space-y-2">
+            <input
+              value={emailTo}
+              onChange={(e)=>setEmailTo(e.target.value)}
+              placeholder="Recipient"
+              className="w-full rounded-lg border px-3 py-2"
+            />
+
+            <input
+              value={emailSubject}
+              onChange={(e)=>setEmailSubject(e.target.value)}
+              placeholder="Subject"
+              className="w-full rounded-lg border px-3 py-2"
+            />
+
+            <textarea
+              rows={5}
+              value={emailBody}
+              onChange={(e)=>setEmailBody(e.target.value)}
+              placeholder="Email Body"
+              className="w-full rounded-lg border px-3 py-2"
+            />
+          </div>
+        )}
+
+        {type==="DELAY" && (
           <input
-            id="step-name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            disabled={isSaving}
-            placeholder="Send Welcome Email"
-            className="rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+            type="number"
+            value={delayMs}
+            onChange={(e)=>setDelayMs(Number(e.target.value))}
+            className="w-full rounded-lg border px-3 py-2"
           />
-        </div>
+        )}
 
-        {/* Type */}
+        {type==="WEBHOOK" && (
+          <div className="space-y-2">
 
-        <div className="flex flex-col gap-1.5">
-          <label
-            htmlFor="step-type"
-            className="text-sm font-medium text-gray-700"
-          >
-            Type
-          </label>
+            <input
+              value={webhookUrl}
+              onChange={(e)=>setWebhookUrl(e.target.value)}
+              placeholder="Webhook URL"
+              className="w-full rounded-lg border px-3 py-2"
+            />
 
-          <select
-            id="step-type"
-            value={type}
-            disabled={isSaving}
-            onChange={(e) =>
-              setType(e.target.value as WorkflowStepType)
-            }
-            className="rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
-          >
-            {STEP_TYPE_OPTIONS.map((option) => (
-              <option
-                key={option}
-                value={option}
-              >
-                {option}
-              </option>
-            ))}
-          </select>
-        </div>
+            <select
+              value={webhookMethod}
+              onChange={(e)=>setWebhookMethod(e.target.value)}
+              className="w-full rounded-lg border px-3 py-2"
+            >
+              <option>POST</option>
+              <option>GET</option>
+              <option>PUT</option>
+              <option>PATCH</option>
+              <option>DELETE</option>
+            </select>
 
-        {/* Description */}
+          </div>
+        )}
 
-        <div className="flex flex-col gap-1.5">
-          <label
-            htmlFor="step-description"
-            className="text-sm font-medium text-gray-700"
-          >
-            Description
-          </label>
+        {type==="TRIGGER" && (
+          <div className="space-y-2">
 
-          <textarea
-            id="step-description"
-            value={description}
-            rows={3}
-            disabled={isSaving}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Describe this step..."
-            className="resize-none rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
-          />
-        </div>
+            <input
+              value={triggerType}
+              onChange={(e)=>setTriggerType(e.target.value)}
+              placeholder="Trigger Type"
+              className="w-full rounded-lg border px-3 py-2"
+            />
 
-        {/* Config */}
+            <input
+              value={formId}
+              onChange={(e)=>setFormId(e.target.value)}
+              placeholder="Form ID"
+              className="w-full rounded-lg border px-3 py-2"
+            />
 
-        <div className="flex flex-col gap-1.5">
-          <label
-            htmlFor="step-config"
-            className="text-sm font-medium text-gray-700"
-          >
-            Config (JSON)
-          </label>
+          </div>
+        )}
 
-          <textarea
-            id="step-config"
-            rows={8}
-            spellCheck={false}
-            value={configText}
-            disabled={isSaving}
-            onChange={(e) =>
-              handleConfigChange(e.target.value)
-            }
-            className={`resize-none rounded-lg border px-3.5 py-2.5 font-mono text-xs outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 ${
-              configError
-                ? "border-red-400"
-                : "border-gray-300"
-            }`}
-          />
+        <textarea
+          rows={8}
+          spellCheck={false}
+          value={configText}
+          onChange={(e)=>handleConfigChange(e.target.value)}
+          className="w-full rounded-lg border px-3 py-2 font-mono text-xs"
+        />
 
-          {configError && (
-            <p className="text-xs text-red-500">
-              {configError}
-            </p>
-          )}
-        </div>
+        {configError && (
+          <p className="text-xs text-red-500">
+            {configError}
+          </p>
+        )}
+
       </div>
 
-      {/* Footer */}
+      <div className="mt-6 flex gap-2">
 
-      <div className="mt-6 flex gap-2 border-t border-gray-100 pt-4">
         <button
           type="button"
-          disabled={isSaveDisabled}
           onClick={handleSave}
-          className="flex-1 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-700 disabled:bg-brand-300"
+          disabled={isSaveDisabled}
+          className="flex-1 rounded-lg bg-brand-600 px-4 py-2 text-white"
         >
           {isSaving ? "Saving..." : "Save Changes"}
         </button>
 
         <button
+          onClick={onDelete}
           type="button"
           disabled={isSaving}
-          onClick={() => onDelete()}
-          className="rounded-lg border border-red-200 px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50"
+          className="rounded-lg border border-red-300 px-4 py-2 text-red-600"
         >
           Delete
         </button>
+
       </div>
     </div>
   );

@@ -36,8 +36,8 @@ export function buildWorkflowFlow(workflow: Workflow): {
       y: NODE_Y_POSITION,
     },
     data: { step },
-    draggable: false,
-    selectable: false,
+    draggable: true,
+    selectable: true,
   }));
 
   const edges: Edge[] = orderedSteps.slice(1).map((step, index) => {

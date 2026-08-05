@@ -4,11 +4,9 @@ import Link from "next/link";
 import { useUIStore } from "@/store/useUIStore";
 
 const navItems = [
-  { label: "Overview", href: "/dashboard" },
-  { label: "Projects", href: "/dashboard" },
-  { label: "Tasks", href: "/dashboard" },
-  { label: "Team", href: "/dashboard" },
-  { label: "Settings", href: "/dashboard" },
+  { label: "Workflows", href: "/dashboard/workflows" },
+  { label: "Executions", href: "/dashboard/executions" },
+  { label: "New Workflow", href: "/dashboard/workflows/new" },
 ];
 
 export function Sidebar() {
