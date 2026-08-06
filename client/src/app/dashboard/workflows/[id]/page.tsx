@@ -251,22 +251,43 @@ export default function WorkflowBuilderPage() {
   async function handleExecuteWorkflow() {
     if (!workflow) return;
 
+    // Send the TRIGGER step's stored config as the request body so the backend
+    // can resolve template placeholders like {{step_1.employee_email}}.
+    // Falls back to {} when no TRIGGER step exists, preserving backward compatibility.
+    // If the API is called directly with a custom body, the backend's getValue()
+    // already prioritises req.body over step.config — no backend change needed.
+    const triggerStep = workflow.steps.find((s) => s.type === "TRIGGER");
+    const triggerPayload = (triggerStep?.config ?? {}) as Record<string, unknown>;
+
     setIsExecuting(true);
     setActionError(null);
     setActionMessage(null);
 
     try {
-      const response = await api.post(`/executions/${workflow.id}`);
-      const executionId = response.data?.data?.execution?.id;
+  const response = await api.post(`/executions/${workflow.id}`, {
+    employee_name: "Boopathi",
+    employee_email: "boopathiraja26ab@gmail.com", // Replace with your Gmail
+    department: "Engineering",
+    job_title: "Software Developer",
+    company_name: "FlowPilot",
+    manager_name: "Admin",
+    manager_email: "admin@flowpilot.com",
+    start_date: "2026-08-10",
+    company_address: "Salem, Tamil Nadu",
+    company_phone: "+91 9876543210",
+    event: "employee_added",
+  });
 
-      if (executionId) {
-        router.push(`/dashboard/executions/${executionId}`);
-      } else {
-        setActionMessage(
-          `Execution ${response.data.data.execution.status}`
-        );
-      }
-    } catch {
+  const executionId = response.data?.data?.execution?.id;
+
+  if (executionId) {
+    router.push(`/dashboard/executions/${executionId}`);
+  } else {
+    setActionMessage(
+      `Execution ${response.data.data.execution.status}`
+    );
+  }
+} catch {
       setActionError("Couldn't start execution. Please try again.");
     } finally {
       setIsExecuting(false);

@@ -50,6 +50,18 @@ export function StepEditor({
   const [triggerType, setTriggerType] = useState("");
   const [formId, setFormId] = useState("");
 
+  const [employeeName, setEmployeeName] = useState("");
+  const [employeeEmail, setEmployeeEmail] = useState("");
+  const [department, setDepartment] = useState("");
+  const [jobTitle, setJobTitle] = useState("");
+  const [companyName, setCompanyName] = useState("");
+  const [managerName, setManagerName] = useState("");
+  const [managerEmail, setManagerEmail] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [companyAddress, setCompanyAddress] = useState("");
+  const [companyPhone, setCompanyPhone] = useState("");
+  const [eventName, setEventName] = useState("employee_added");
+
   const [configText, setConfigText] = useState("");
   const [configError, setConfigError] = useState<string | null>(null);
 
@@ -119,6 +131,28 @@ export function StepEditor({
         : ""
     );
 
+    setEmployeeName(typeof config.employee_name === "string" ? config.employee_name : "");
+
+    setEmployeeEmail(typeof config.employee_email === "string" ? config.employee_email : "");
+
+    setDepartment(typeof config.department === "string" ? config.department : "");  
+
+    setJobTitle(typeof config.job_title === "string" ? config.job_title : "");  
+
+    setCompanyName(typeof config.company_name === "string" ? config.company_name : "");
+
+    setManagerName(typeof config.manager_name === "string" ? config.manager_name : "");
+
+    setManagerEmail(typeof config.manager_email === "string" ? config.manager_email : "");
+
+    setStartDate(typeof config.start_date === "string" ? config.start_date : "");
+
+    setCompanyAddress(typeof config.company_address === "string" ? config.company_address : "");
+
+    setCompanyPhone(typeof config.company_phone === "string" ? config.company_phone : "");
+
+    setEventName(typeof config.event === "string" ? config.event : "employee_added");
+
     setConfigText(JSON.stringify(config, null, 2));
     setConfigError(null);
   }, [step]);
@@ -158,9 +192,18 @@ export function StepEditor({
         break;
 
       case "TRIGGER":
-        config.trigger_type = triggerType;
-        config.form_id = formId;
-        break;
+  config.employee_name = employeeName;
+  config.employee_email = employeeEmail;
+  config.department = department;
+  config.job_title = jobTitle;
+  config.company_name = companyName;
+  config.manager_name = managerName;
+  config.manager_email = managerEmail;
+  config.start_date = startDate;
+  config.company_address = companyAddress;
+  config.company_phone = companyPhone;
+  config.event = eventName;
+  break;
     }
 
     try {
@@ -301,25 +344,95 @@ export function StepEditor({
           </div>
         )}
 
-        {type==="TRIGGER" && (
-          <div className="space-y-2">
+        {type === "TRIGGER" && (
+  <div className="space-y-2">
 
-            <input
-              value={triggerType}
-              onChange={(e)=>setTriggerType(e.target.value)}
-              placeholder="Trigger Type"
-              className="w-full rounded-lg border px-3 py-2"
-            />
+    <input
+      value={triggerType}
+      onChange={(e) => setTriggerType(e.target.value)}
+      placeholder="Trigger Type"
+      className="w-full rounded-lg border px-3 py-2"
+    />
 
-            <input
-              value={formId}
-              onChange={(e)=>setFormId(e.target.value)}
-              placeholder="Form ID"
-              className="w-full rounded-lg border px-3 py-2"
-            />
+    <input
+      value={formId}
+      onChange={(e) => setFormId(e.target.value)}
+      placeholder="Form ID"
+      className="w-full rounded-lg border px-3 py-2"
+    />
 
-          </div>
-        )}
+    <input
+      value={employeeName}
+      onChange={(e) => setEmployeeName(e.target.value)}
+      placeholder="Employee Name"
+      className="w-full rounded-lg border px-3 py-2"
+    />
+
+    <input
+      value={employeeEmail}
+      onChange={(e) => setEmployeeEmail(e.target.value)}
+      placeholder="Employee Email"
+      className="w-full rounded-lg border px-3 py-2"
+    />
+
+    <input
+      value={department}
+      onChange={(e) => setDepartment(e.target.value)}
+      placeholder="Department"
+      className="w-full rounded-lg border px-3 py-2"
+    />
+
+    <input
+      value={jobTitle}
+      onChange={(e) => setJobTitle(e.target.value)}
+      placeholder="Job Title"
+      className="w-full rounded-lg border px-3 py-2"
+    />
+
+    <input
+      value={companyName}
+      onChange={(e) => setCompanyName(e.target.value)}
+      placeholder="Company Name"
+      className="w-full rounded-lg border px-3 py-2"
+    />
+
+    <input
+      value={managerName}
+      onChange={(e) => setManagerName(e.target.value)}
+      placeholder="Manager Name"
+      className="w-full rounded-lg border px-3 py-2"
+    />
+
+    <input
+      value={managerEmail}
+      onChange={(e) => setManagerEmail(e.target.value)}
+      placeholder="Manager Email"
+      className="w-full rounded-lg border px-3 py-2"
+    />
+
+    <input
+      value={startDate}
+      onChange={(e) => setStartDate(e.target.value)}
+      placeholder="Start Date"
+      className="w-full rounded-lg border px-3 py-2"
+    />
+
+    <input
+      value={companyAddress}
+      onChange={(e) => setCompanyAddress(e.target.value)}
+      placeholder="Company Address"
+      className="w-full rounded-lg border px-3 py-2"
+    />
+
+    <input
+      value={companyPhone}
+      onChange={(e) => setCompanyPhone(e.target.value)}
+      placeholder="Company Phone"
+      className="w-full rounded-lg border px-3 py-2"
+    />
+
+  </div>
+)}
 
         <textarea
           rows={8}

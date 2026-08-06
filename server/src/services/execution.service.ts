@@ -150,19 +150,17 @@ async function executeSingleStep(
     case "EMAIL": {
       const config = (step.config as Record<string, unknown>) ?? {};
 
-      const rawTo = typeof config.to === "string" ? config.to : "";
-      const rawSubject =
-        typeof config.subject === "string"
-          ? config.subject
-          : "FlowPilot Notification";
-      const rawBody =
-        typeof config.body === "string"
-          ? config.body
-          : "<h2>Hello from FlowPilot</h2>";
+      const rawConfig = {
+        to:      typeof config.to      === "string" ? config.to      : "",
+        subject: typeof config.subject === "string" ? config.subject : "FlowPilot Notification",
+        body:    typeof config.body    === "string" ? config.body    : "<h2>Hello from FlowPilot</h2>",
+      };
 
-      const to = resolveTemplate(rawTo, context);
-      const subject = resolveTemplate(rawSubject, context);
-      const body = resolveTemplate(rawBody, context);
+      const resolvedConfig = resolveObjectTemplates(rawConfig, context);
+
+      const to      = resolvedConfig.to;
+      const subject = resolvedConfig.subject;
+      const body    = resolvedConfig.body;
 
       if (!to) {
         throw new Error("Email recipient is missing.");
@@ -264,6 +262,7 @@ export async function executeWorkflow(
   userId: string,
   triggerInput?: Record<string, unknown>
 ) {
+
   // Load workflow
   const workflow = await getWorkflowForExecution(
     workflowId,
@@ -300,6 +299,7 @@ export async function executeWorkflow(
         } else if (step.type === "TRIGGER") {
           context[stepKey] = result.output;
           context.trigger = result.output;
+        
         } else if (
           typeof result.output === "object" &&
           result.output !== null
