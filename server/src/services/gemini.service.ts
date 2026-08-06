@@ -9,7 +9,7 @@ export async function generateAIResponse(
   prompt: string
 ): Promise<string> {
   const response = await ai.models.generateContent({
-    model: env.gemini.model,
+    model: "gemini-flash-lite-latest",
     contents: prompt,
   });
 
