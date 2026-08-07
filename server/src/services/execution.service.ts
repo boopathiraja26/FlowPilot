@@ -129,56 +129,64 @@ async function executeSingleStep(
     }
 
     case "AI": {
-      const config = (step.config as Record<string, unknown>) ?? {};
+  const trigger = context.trigger;
 
-      const rawPrompt =
-        typeof config.prompt === "string"
-          ? config.prompt
-          : "Hello from FlowPilot";
+  const config = (step.config as Record<string, unknown>) ?? {};
 
-      const prompt = resolveTemplate(rawPrompt, context);
+  const instructions =
+    typeof config.prompt === "string"
+      ? config.prompt
+      : "Generate a professional welcome email.";
 
-      const response = await generateAIResponse(prompt);
+  const prompt = `
+You are an HR assistant.
 
-      return {
-        success: true,
-        message: response,
-        output: response,
-      };
-    }
+Employee Name: ${trigger.employee_name}
+Employee Email: ${trigger.employee_email}
+Department: ${trigger.department}
+Job Title: ${trigger.job_title}
+Company: ${trigger.company_name}
+Manager: ${trigger.manager_name}
+Start Date: ${trigger.start_date}
 
-    case "EMAIL": {
-      const config = (step.config as Record<string, unknown>) ?? {};
+Instructions:
+${instructions}
+`;
 
-      const rawConfig = {
-        to:      typeof config.to      === "string" ? config.to      : "",
-        subject: typeof config.subject === "string" ? config.subject : "FlowPilot Notification",
-        body:    typeof config.body    === "string" ? config.body    : "<h2>Hello from FlowPilot</h2>",
-      };
+  const response = await generateAIResponse(prompt);
 
-      const resolvedConfig = resolveObjectTemplates(rawConfig, context);
+  return {
+    success: true,
+    message: "AI content generated successfully.",
+    output: response,
+  };
+}
 
-      const to      = resolvedConfig.to;
-      const subject = resolvedConfig.subject;
-      const body    = resolvedConfig.body;
+   case "EMAIL": {
+  const trigger = context.trigger;
 
-      if (!to) {
-        throw new Error("Email recipient is missing.");
-      }
+  const aiOutput = context.step_2?.output;
 
-      await sendEmail(to, subject, body);
+  if (!trigger.employee_email) {
+    throw new Error("Employee email is missing.");
+  }
 
-      return {
-        success: true,
-        message: `Email sent to ${to}`,
-        output: {
-          to,
-          subject,
-          body,
-        },
-      };
-    }
+  await sendEmail(
+    trigger.employee_email,
+    `Welcome to the team, ${trigger.employee_name}!`,
+    aiOutput
+  );
 
+  return {
+    success: true,
+    message: `Email sent to ${trigger.employee_email}`,
+    output: {
+      to: trigger.employee_email,
+      subject: `Welcome to the team, ${trigger.employee_name}!`,
+      body: aiOutput,
+    },
+  };
+}
     case "WEBHOOK": {
       const config = (step.config as Record<string, unknown>) ?? {};
 
