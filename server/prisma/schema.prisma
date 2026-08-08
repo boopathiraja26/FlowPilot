@@ -7,6 +7,83 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id        String     @id @default(uuid())
+  name      String
+  email     String     @unique
+  password  String?
+  avatar    String?
+  role      UserRole   @default(USER)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  workflows Workflow[]
+
+  @@map("users")
+}
+
+model Workflow {
+  id          String              @id @default(uuid())
+  title       String
+  description String?
+  status      WorkflowStatus      @default(DRAFT)
+  userId      String
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  executions  WorkflowExecution[]
+  steps       WorkflowStep[]
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("workflows")
+}
+
+model WorkflowStep {
+  id         String           @id @default(uuid())
+  workflowId String
+  stepOrder  Int
+  type       WorkflowStepType
+  name       String
+  config     Json?
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+  workflow   Workflow         @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId])
+  @@map("workflow_steps")
+}
+
+model WorkflowExecution {
+  id          String          @id @default(uuid())
+  workflowId  String
+  status      ExecutionStatus @default(RUNNING)
+  startedAt   DateTime        @default(now())
+  completedAt DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  logs        ExecutionLog[]
+  workflow    Workflow        @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId])
+  @@map("workflow_executions")
+}
+
+model ExecutionLog {
+  id          String            @id @default(uuid())
+  executionId String
+  stepId      String
+  stepName    String
+  stepType    WorkflowStepType
+  status      ExecutionStatus
+  message     String?
+  startedAt   DateTime          @default(now())
+  completedAt DateTime?
+  createdAt   DateTime          @default(now())
+  execution   WorkflowExecution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+
+  @@index([executionId])
+  @@map("execution_logs")
+}
+
 enum UserRole {
   USER
   ADMIN
@@ -30,101 +107,4 @@ enum ExecutionStatus {
   RUNNING
   COMPLETED
   FAILED
-}
-
-model User {
-  id         String     @id @default(uuid())
-  name       String
-  email      String     @unique
-  password   String?
-  avatar     String?
-  role       UserRole   @default(USER)
-
-  workflows  Workflow[]
-
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
-
-  @@map("users")
-}
-
-model Workflow {
-  id          String           @id @default(uuid())
-  title       String
-  description String?
-  status      WorkflowStatus   @default(DRAFT)
-
-  userId      String
-  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  steps        WorkflowStep[]
-  executions   WorkflowExecution[]
-
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
-
-  @@index([userId])
-  @@map("workflows")
-}
-
-model WorkflowStep {
-  id          String            @id @default(uuid())
-
-  workflowId  String
-  workflow    Workflow          @relation(fields: [workflowId], references: [id], onDelete: Cascade)
-
-  stepOrder   Int
-  type        WorkflowStepType
-  name        String
-
-  config      Json?
-
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
-
-  @@index([workflowId])
-  @@map("workflow_steps")
-}
-
-model WorkflowExecution {
-  id           String             @id @default(uuid())
-
-  workflowId   String
-  workflow     Workflow           @relation(fields: [workflowId], references: [id], onDelete: Cascade)
-
-  status       ExecutionStatus    @default(RUNNING)
-
-  startedAt    DateTime           @default(now())
-  completedAt  DateTime?
-
-  logs         ExecutionLog[]
-
-  createdAt    DateTime           @default(now())
-  updatedAt    DateTime           @updatedAt
-
-  @@index([workflowId])
-  @@map("workflow_executions")
-}
-
-model ExecutionLog {
-  id            String               @id @default(uuid())
-
-  executionId   String
-  execution     WorkflowExecution    @relation(fields: [executionId], references: [id], onDelete: Cascade)
-
-  stepId        String
-  stepName      String
-  stepType      WorkflowStepType
-
-  status        ExecutionStatus
-
-  message       String?
-
-  startedAt     DateTime             @default(now())
-  completedAt   DateTime?
-
-  createdAt     DateTime             @default(now())
-
-  @@index([executionId])
-  @@map("execution_logs")
 }

@@ -4,7 +4,8 @@ import { env } from "../config/env";
 const transporter = nodemailer.createTransport({
   host: env.email.host,
   port: env.email.port,
-  secure: false, // true only for port 465
+  secure: false,
+  family: 4,
   auth: {
     user: env.email.user,
     pass: env.email.pass,
