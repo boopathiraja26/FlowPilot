@@ -25,140 +25,197 @@ const STEP_TYPE_OPTIONS: WorkflowStepType[] = [
   "WEBHOOK",
 ];
 
+interface StepFormState {
+  name: string;
+  type: WorkflowStepType;
+  description: string;
+
+  prompt: string;
+
+  emailTo: string;
+  emailSubject: string;
+  emailBody: string;
+
+  delayMs: number;
+
+  webhookUrl: string;
+  webhookMethod: string;
+
+  triggerType: string;
+  formId: string;
+
+  employeeName: string;
+  employeeEmail: string;
+  department: string;
+  jobTitle: string;
+  companyName: string;
+  managerName: string;
+  managerEmail: string;
+  startDate: string;
+  companyAddress: string;
+  companyPhone: string;
+  eventName: string;
+
+  configText: string;
+}
+
+function createFormState(step: WorkflowStep): StepFormState {
+  const config = (step.config ?? {}) as Record<string, unknown>;
+
+  return {
+    name: step.name,
+    type: step.type,
+
+    description:
+      typeof config.description === "string"
+        ? config.description
+        : "",
+
+    prompt:
+      typeof config.prompt === "string"
+        ? config.prompt
+        : "",
+
+    emailTo:
+      typeof config.to === "string"
+        ? config.to
+        : "",
+
+    emailSubject:
+      typeof config.subject === "string"
+        ? config.subject
+        : "",
+
+    emailBody:
+      typeof config.body === "string"
+        ? config.body
+        : "",
+
+    delayMs:
+      typeof config.milliseconds === "number"
+        ? config.milliseconds
+        : 5000,
+
+    webhookUrl:
+      typeof config.url === "string"
+        ? config.url
+        : "",
+
+    webhookMethod:
+      typeof config.method === "string"
+        ? config.method
+        : "POST",
+
+    triggerType:
+      typeof config.trigger_type === "string"
+        ? config.trigger_type
+        : "",
+
+    formId:
+      typeof config.form_id === "string"
+        ? config.form_id
+        : "",
+
+    employeeName:
+      typeof config.employee_name === "string"
+        ? config.employee_name
+        : "",
+
+    employeeEmail:
+      typeof config.employee_email === "string"
+        ? config.employee_email
+        : "",
+
+    department:
+      typeof config.department === "string"
+        ? config.department
+        : "",
+
+    jobTitle:
+      typeof config.job_title === "string"
+        ? config.job_title
+        : "",
+
+    companyName:
+      typeof config.company_name === "string"
+        ? config.company_name
+        : "",
+
+    managerName:
+      typeof config.manager_name === "string"
+        ? config.manager_name
+        : "",
+
+    managerEmail:
+      typeof config.manager_email === "string"
+        ? config.manager_email
+        : "",
+
+    startDate:
+      typeof config.start_date === "string"
+        ? config.start_date
+        : "",
+
+    companyAddress:
+      typeof config.company_address === "string"
+        ? config.company_address
+        : "",
+
+    companyPhone:
+      typeof config.company_phone === "string"
+        ? config.company_phone
+        : "",
+
+    eventName:
+      typeof config.event === "string"
+        ? config.event
+        : "employee_added",
+
+    configText: JSON.stringify(config, null, 2),
+  };
+}
+
 export function StepEditor({
   step,
   onSave,
   onDelete,
   isSaving,
 }: StepEditorProps) {
-  const [name, setName] = useState(step.name);
-  const [type, setType] = useState<WorkflowStepType>(step.type);
+  const [form, setForm] = useState<StepFormState>(() =>
+    createFormState(step)
+  );
 
-  const [description, setDescription] = useState("");
-
-  const [prompt, setPrompt] = useState("");
-
-  const [emailTo, setEmailTo] = useState("");
-  const [emailSubject, setEmailSubject] = useState("");
-  const [emailBody, setEmailBody] = useState("");
-
-  const [delayMs, setDelayMs] = useState(5000);
-
-  const [webhookUrl, setWebhookUrl] = useState("");
-  const [webhookMethod, setWebhookMethod] = useState("POST");
-
-  const [triggerType, setTriggerType] = useState("");
-  const [formId, setFormId] = useState("");
-
-  const [employeeName, setEmployeeName] = useState("");
-  const [employeeEmail, setEmployeeEmail] = useState("");
-  const [department, setDepartment] = useState("");
-  const [jobTitle, setJobTitle] = useState("");
-  const [companyName, setCompanyName] = useState("");
-  const [managerName, setManagerName] = useState("");
-  const [managerEmail, setManagerEmail] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [companyAddress, setCompanyAddress] = useState("");
-  const [companyPhone, setCompanyPhone] = useState("");
-  const [eventName, setEventName] = useState("employee_added");
-
-  const [configText, setConfigText] = useState("");
   const [configError, setConfigError] = useState<string | null>(null);
 
+  // =========================================================
+  // Sync editor when selected step changes
+  // =========================================================
+
   useEffect(() => {
-    const config = (step.config ?? {}) as Record<string, unknown>;
-
-    setName(step.name);
-    setType(step.type);
-
-    setDescription(
-      typeof config.description === "string"
-        ? config.description
-        : ""
-    );
-
-    setPrompt(
-      typeof config.prompt === "string"
-        ? config.prompt
-        : ""
-    );
-
-    setEmailTo(
-      typeof config.to === "string"
-        ? config.to
-        : ""
-    );
-
-    setEmailSubject(
-      typeof config.subject === "string"
-        ? config.subject
-        : ""
-    );
-
-    setEmailBody(
-      typeof config.body === "string"
-        ? config.body
-        : ""
-    );
-
-    setDelayMs(
-      typeof config.milliseconds === "number"
-        ? config.milliseconds
-        : 5000
-    );
-
-    setWebhookUrl(
-      typeof config.url === "string"
-        ? config.url
-        : ""
-    );
-
-    setWebhookMethod(
-      typeof config.method === "string"
-        ? config.method
-        : "POST"
-    );
-
-    setTriggerType(
-      typeof config.trigger_type === "string"
-        ? config.trigger_type
-        : ""
-    );
-
-    setFormId(
-      typeof config.form_id === "string"
-        ? config.form_id
-        : ""
-    );
-
-    setEmployeeName(typeof config.employee_name === "string" ? config.employee_name : "");
-
-    setEmployeeEmail(typeof config.employee_email === "string" ? config.employee_email : "");
-
-    setDepartment(typeof config.department === "string" ? config.department : "");  
-
-    setJobTitle(typeof config.job_title === "string" ? config.job_title : "");  
-
-    setCompanyName(typeof config.company_name === "string" ? config.company_name : "");
-
-    setManagerName(typeof config.manager_name === "string" ? config.manager_name : "");
-
-    setManagerEmail(typeof config.manager_email === "string" ? config.manager_email : "");
-
-    setStartDate(typeof config.start_date === "string" ? config.start_date : "");
-
-    setCompanyAddress(typeof config.company_address === "string" ? config.company_address : "");
-
-    setCompanyPhone(typeof config.company_phone === "string" ? config.company_phone : "");
-
-    setEventName(typeof config.event === "string" ? config.event : "employee_added");
-
-    setConfigText(JSON.stringify(config, null, 2));
+    setForm(createFormState(step));
     setConfigError(null);
   }, [step]);
 
+  // =========================================================
+  // Generic field updater
+  // =========================================================
+
+  function updateField<K extends keyof StepFormState>(
+    field: K,
+    value: StepFormState[K]
+  ) {
+    setForm((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  }
+
+  // =========================================================
+  // Config JSON validation
+  // =========================================================
+
   function handleConfigChange(value: string) {
-    setConfigText(value);
+    updateField("configText", value);
 
     try {
       JSON.parse(value);
@@ -168,308 +225,471 @@ export function StepEditor({
     }
   }
 
+  // =========================================================
+  // Save
+  // =========================================================
+
   function handleSave() {
     let config: Record<string, unknown> = {};
 
-    switch (type) {
+    switch (form.type) {
       case "AI":
-        config.prompt = prompt;
+        config.prompt = form.prompt;
         break;
 
       case "EMAIL":
-        config.to = emailTo;
-        config.subject = emailSubject;
-        config.body = emailBody;
+        config.to = form.emailTo;
+        config.subject = form.emailSubject;
+        config.body = form.emailBody;
         break;
 
       case "DELAY":
-        config.milliseconds = delayMs;
+        config.milliseconds = form.delayMs;
         break;
 
       case "WEBHOOK":
-        config.url = webhookUrl;
-        config.method = webhookMethod;
+        config.url = form.webhookUrl;
+        config.method = form.webhookMethod;
         break;
 
       case "TRIGGER":
-  config.employee_name = employeeName;
-  config.employee_email = employeeEmail;
-  config.department = department;
-  config.job_title = jobTitle;
-  config.company_name = companyName;
-  config.manager_name = managerName;
-  config.manager_email = managerEmail;
-  config.start_date = startDate;
-  config.company_address = companyAddress;
-  config.company_phone = companyPhone;
-  config.event = eventName;
-  break;
+        config.trigger_type = form.triggerType;
+        config.form_id = form.formId;
+
+        config.employee_name = form.employeeName;
+        config.employee_email = form.employeeEmail;
+        config.department = form.department;
+        config.job_title = form.jobTitle;
+        config.company_name = form.companyName;
+        config.manager_name = form.managerName;
+        config.manager_email = form.managerEmail;
+        config.start_date = form.startDate;
+        config.company_address = form.companyAddress;
+        config.company_phone = form.companyPhone;
+        config.event = form.eventName;
+
+        break;
     }
 
+    // Preserve manually entered JSON configuration.
     try {
-      const raw = JSON.parse(configText);
+      const raw = JSON.parse(form.configText);
+
       config = {
         ...raw,
         ...config,
       };
-    } catch {}
+    } catch {
+      // The Save button is disabled when config is invalid,
+      // so this should normally never execute.
+    }
 
-    config.description = description;
+    config.description = form.description;
 
     onSave({
-      name,
-      type,
-      description,
+      name: form.name,
+      type: form.type,
+      description: form.description,
       config,
     });
   }
 
   const isSaveDisabled =
-  isSaving ||
-  Boolean(configError) ||
-  !name.trim();
+    isSaving ||
+    Boolean(configError) ||
+    !form.name.trim();
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-6">
-
+      {/* Header */}
       <div className="mb-5 flex items-center justify-between">
-        <h3 className="text-sm font-semibold">
+        <h3 className="text-sm font-semibold text-gray-900">
           Edit Step
         </h3>
 
-        <span className="rounded-full bg-gray-100 px-3 py-1 text-xs">
+        <span className="rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-600">
           Step {step.stepOrder}
         </span>
       </div>
 
       <div className="space-y-4">
-
+        {/* Step Name */}
         <input
-          value={name}
+          value={form.name}
           disabled={isSaving}
-          onChange={(e)=>setName(e.target.value)}
+          onChange={(e) => updateField("name", e.target.value)}
           placeholder="Step Name"
-          className="w-full rounded-lg border px-3 py-2"
+          className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
         />
 
+        {/* Step Type */}
         <select
-          value={type}
+          value={form.type}
           disabled={isSaving}
-          onChange={(e)=>setType(e.target.value as WorkflowStepType)}
-          className="w-full rounded-lg border px-3 py-2"
+          onChange={(e) =>
+            updateField(
+              "type",
+              e.target.value as WorkflowStepType
+            )
+          }
+          className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
         >
-          {STEP_TYPE_OPTIONS.map(type=>(
-            <option key={type}>
+          {STEP_TYPE_OPTIONS.map((type) => (
+            <option key={type} value={type}>
               {type}
             </option>
           ))}
         </select>
 
+        {/* Description */}
         <textarea
-          value={description}
+          value={form.description}
           disabled={isSaving}
           rows={3}
-          onChange={(e)=>setDescription(e.target.value)}
+          onChange={(e) =>
+            updateField("description", e.target.value)
+          }
           placeholder="Description"
-          className="w-full rounded-lg border px-3 py-2"
+          className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
         />
 
-        {type==="AI" && (
-          <textarea
-            rows={5}
-            value={prompt}
-            onChange={(e)=>setPrompt(e.target.value)}
-            placeholder="AI Prompt"
-            className="w-full rounded-lg border px-3 py-2"
-          />
-        )}
-
-        {type==="EMAIL" && (
-          <div className="space-y-2">
-            <input
-              value={emailTo}
-              onChange={(e)=>setEmailTo(e.target.value)}
-              placeholder="Recipient"
-              className="w-full rounded-lg border px-3 py-2"
-            />
-
-            <input
-              value={emailSubject}
-              onChange={(e)=>setEmailSubject(e.target.value)}
-              placeholder="Subject"
-              className="w-full rounded-lg border px-3 py-2"
-            />
+        {/* AI */}
+        {form.type === "AI" && (
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">
+              AI Prompt
+            </label>
 
             <textarea
               rows={5}
-              value={emailBody}
-              onChange={(e)=>setEmailBody(e.target.value)}
-              placeholder="Email Body"
-              className="w-full rounded-lg border px-3 py-2"
+              value={form.prompt}
+              disabled={isSaving}
+              onChange={(e) =>
+                updateField("prompt", e.target.value)
+              }
+              placeholder="AI Prompt"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
             />
           </div>
         )}
 
-        {type==="DELAY" && (
-          <input
-            type="number"
-            value={delayMs}
-            onChange={(e)=>setDelayMs(Number(e.target.value))}
-            className="w-full rounded-lg border px-3 py-2"
-          />
+        {/* EMAIL */}
+        {form.type === "EMAIL" && (
+          <div className="space-y-3">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">
+                Recipient
+              </label>
+
+              <input
+                value={form.emailTo}
+                disabled={isSaving}
+                onChange={(e) =>
+                  updateField("emailTo", e.target.value)
+                }
+                placeholder="Recipient"
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">
+                Subject
+              </label>
+
+              <input
+                value={form.emailSubject}
+                disabled={isSaving}
+                onChange={(e) =>
+                  updateField("emailSubject", e.target.value)
+                }
+                placeholder="Subject"
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">
+                Email Body
+              </label>
+
+              <textarea
+                rows={5}
+                value={form.emailBody}
+                disabled={isSaving}
+                onChange={(e) =>
+                  updateField("emailBody", e.target.value)
+                }
+                placeholder="Email Body"
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
+              />
+            </div>
+          </div>
         )}
 
-        {type==="WEBHOOK" && (
-          <div className="space-y-2">
+        {/* DELAY */}
+        {form.type === "DELAY" && (
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">
+              Delay (milliseconds)
+            </label>
 
             <input
-              value={webhookUrl}
-              onChange={(e)=>setWebhookUrl(e.target.value)}
-              placeholder="Webhook URL"
-              className="w-full rounded-lg border px-3 py-2"
+              type="number"
+              value={form.delayMs}
+              disabled={isSaving}
+              onChange={(e) =>
+                updateField(
+                  "delayMs",
+                  Number(e.target.value)
+                )
+              }
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
             />
-
-            <select
-              value={webhookMethod}
-              onChange={(e)=>setWebhookMethod(e.target.value)}
-              className="w-full rounded-lg border px-3 py-2"
-            >
-              <option>POST</option>
-              <option>GET</option>
-              <option>PUT</option>
-              <option>PATCH</option>
-              <option>DELETE</option>
-            </select>
-
           </div>
         )}
 
-        {type === "TRIGGER" && (
-  <div className="space-y-2">
+        {/* WEBHOOK */}
+        {form.type === "WEBHOOK" && (
+          <div className="space-y-3">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">
+                Webhook URL
+              </label>
 
-    <input
-      value={triggerType}
-      onChange={(e) => setTriggerType(e.target.value)}
-      placeholder="Trigger Type"
-      className="w-full rounded-lg border px-3 py-2"
-    />
+              <input
+                value={form.webhookUrl}
+                disabled={isSaving}
+                onChange={(e) =>
+                  updateField("webhookUrl", e.target.value)
+                }
+                placeholder="Webhook URL"
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
+              />
+            </div>
 
-    <input
-      value={formId}
-      onChange={(e) => setFormId(e.target.value)}
-      placeholder="Form ID"
-      className="w-full rounded-lg border px-3 py-2"
-    />
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">
+                HTTP Method
+              </label>
 
-    <input
-      value={employeeName}
-      onChange={(e) => setEmployeeName(e.target.value)}
-      placeholder="Employee Name"
-      className="w-full rounded-lg border px-3 py-2"
-    />
-
-    <input
-      value={employeeEmail}
-      onChange={(e) => setEmployeeEmail(e.target.value)}
-      placeholder="Employee Email"
-      className="w-full rounded-lg border px-3 py-2"
-    />
-
-    <input
-      value={department}
-      onChange={(e) => setDepartment(e.target.value)}
-      placeholder="Department"
-      className="w-full rounded-lg border px-3 py-2"
-    />
-
-    <input
-      value={jobTitle}
-      onChange={(e) => setJobTitle(e.target.value)}
-      placeholder="Job Title"
-      className="w-full rounded-lg border px-3 py-2"
-    />
-
-    <input
-      value={companyName}
-      onChange={(e) => setCompanyName(e.target.value)}
-      placeholder="Company Name"
-      className="w-full rounded-lg border px-3 py-2"
-    />
-
-    <input
-      value={managerName}
-      onChange={(e) => setManagerName(e.target.value)}
-      placeholder="Manager Name"
-      className="w-full rounded-lg border px-3 py-2"
-    />
-
-    <input
-      value={managerEmail}
-      onChange={(e) => setManagerEmail(e.target.value)}
-      placeholder="Manager Email"
-      className="w-full rounded-lg border px-3 py-2"
-    />
-
-    <input
-      value={startDate}
-      onChange={(e) => setStartDate(e.target.value)}
-      placeholder="Start Date"
-      className="w-full rounded-lg border px-3 py-2"
-    />
-
-    <input
-      value={companyAddress}
-      onChange={(e) => setCompanyAddress(e.target.value)}
-      placeholder="Company Address"
-      className="w-full rounded-lg border px-3 py-2"
-    />
-
-    <input
-      value={companyPhone}
-      onChange={(e) => setCompanyPhone(e.target.value)}
-      placeholder="Company Phone"
-      className="w-full rounded-lg border px-3 py-2"
-    />
-
-  </div>
-)}
-
-        <textarea
-          rows={8}
-          spellCheck={false}
-          value={configText}
-          onChange={(e)=>handleConfigChange(e.target.value)}
-          className="w-full rounded-lg border px-3 py-2 font-mono text-xs"
-        />
-
-        {configError && (
-          <p className="text-xs text-red-500">
-            {configError}
-          </p>
+              <select
+                value={form.webhookMethod}
+                disabled={isSaving}
+                onChange={(e) =>
+                  updateField(
+                    "webhookMethod",
+                    e.target.value
+                  )
+                }
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
+              >
+                <option value="POST">POST</option>
+                <option value="GET">GET</option>
+                <option value="PUT">PUT</option>
+                <option value="PATCH">PATCH</option>
+                <option value="DELETE">DELETE</option>
+              </select>
+            </div>
+          </div>
         )}
 
+        {/* TRIGGER */}
+        {form.type === "TRIGGER" && (
+          <div className="space-y-3">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">
+                Trigger Type
+              </label>
+
+              <input
+                value={form.triggerType}
+                disabled={isSaving}
+                onChange={(e) =>
+                  updateField(
+                    "triggerType",
+                    e.target.value
+                  )
+                }
+                placeholder="Trigger Type"
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">
+                Form ID
+              </label>
+
+              <input
+                value={form.formId}
+                disabled={isSaving}
+                onChange={(e) =>
+                  updateField("formId", e.target.value)
+                }
+                placeholder="Form ID"
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
+              />
+            </div>
+
+            <input
+              value={form.employeeName}
+              disabled={isSaving}
+              onChange={(e) =>
+                updateField("employeeName", e.target.value)
+              }
+              placeholder="Employee Name"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
+            />
+
+            <input
+              value={form.employeeEmail}
+              disabled={isSaving}
+              onChange={(e) =>
+                updateField(
+                  "employeeEmail",
+                  e.target.value
+                )
+              }
+              placeholder="Employee Email"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
+            />
+
+            <input
+              value={form.department}
+              disabled={isSaving}
+              onChange={(e) =>
+                updateField("department", e.target.value)
+              }
+              placeholder="Department"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
+            />
+
+            <input
+              value={form.jobTitle}
+              disabled={isSaving}
+              onChange={(e) =>
+                updateField("jobTitle", e.target.value)
+              }
+              placeholder="Job Title"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
+            />
+
+            <input
+              value={form.companyName}
+              disabled={isSaving}
+              onChange={(e) =>
+                updateField("companyName", e.target.value)
+              }
+              placeholder="Company Name"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
+            />
+
+            <input
+              value={form.managerName}
+              disabled={isSaving}
+              onChange={(e) =>
+                updateField("managerName", e.target.value)
+              }
+              placeholder="Manager Name"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
+            />
+
+            <input
+              value={form.managerEmail}
+              disabled={isSaving}
+              onChange={(e) =>
+                updateField(
+                  "managerEmail",
+                  e.target.value
+                )
+              }
+              placeholder="Manager Email"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
+            />
+
+            <input
+              value={form.startDate}
+              disabled={isSaving}
+              onChange={(e) =>
+                updateField("startDate", e.target.value)
+              }
+              placeholder="Start Date"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
+            />
+
+            <input
+              value={form.companyAddress}
+              disabled={isSaving}
+              onChange={(e) =>
+                updateField(
+                  "companyAddress",
+                  e.target.value
+                )
+              }
+              placeholder="Company Address"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
+            />
+
+            <input
+              value={form.companyPhone}
+              disabled={isSaving}
+              onChange={(e) =>
+                updateField(
+                  "companyPhone",
+                  e.target.value
+                )
+              }
+              placeholder="Company Phone"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
+            />
+          </div>
+        )}
+
+        {/* Raw JSON configuration */}
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-600">
+            Configuration JSON
+          </label>
+
+          <textarea
+            rows={8}
+            spellCheck={false}
+            value={form.configText}
+            disabled={isSaving}
+            onChange={(e) =>
+              handleConfigChange(e.target.value)
+            }
+            className="w-full rounded-lg border border-gray-200 px-3 py-2 font-mono text-xs outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
+          />
+
+          {configError && (
+            <p className="mt-1 text-xs text-red-500">
+              {configError}
+            </p>
+          )}
+        </div>
       </div>
 
+      {/* Actions */}
       <div className="mt-6 flex gap-2">
-
         <button
           type="button"
           onClick={handleSave}
           disabled={isSaveDisabled}
-          className="flex-1 rounded-lg bg-brand-600 px-4 py-2 text-white"
+          className="flex-1 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isSaving ? "Saving..." : "Save Changes"}
         </button>
 
         <button
-          onClick={onDelete}
           type="button"
+          onClick={onDelete}
           disabled={isSaving}
-          className="rounded-lg border border-red-300 px-4 py-2 text-red-600"
+          className="rounded-lg border border-red-300 px-4 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
         >
           Delete
         </button>
-
       </div>
     </div>
   );

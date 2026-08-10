@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5000/api";
+  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/api";
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
@@ -11,7 +11,7 @@ export const api = axios.create({
   },
 });
 
-// Central place to attach interceptors later (e.g. token refresh, logging)
+// Response interceptor
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -20,6 +20,7 @@ api.interceptors.response.use(
         window.location.href = "/login";
       }
     }
+
     return Promise.reject(error);
   }
 );

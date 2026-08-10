@@ -11,7 +11,7 @@ const HORIZONTAL_SPACING = 260;
 const NODE_Y_POSITION = 0;
 
 // =========================================================
-// Node data shape (consumed by WorkflowStepNode)
+// Node data shape
 // =========================================================
 
 export interface WorkflowStepNodeData {
@@ -19,26 +19,32 @@ export interface WorkflowStepNodeData {
 }
 
 // =========================================================
-// buildWorkflowFlow
+// Build workflow nodes + edges
 // =========================================================
 
 export function buildWorkflowFlow(workflow: Workflow): {
   nodes: Node<WorkflowStepNodeData>[];
   edges: Edge[];
 } {
-  const orderedSteps = [...workflow.steps].sort((a, b) => a.stepOrder - b.stepOrder);
+  const orderedSteps = [...(workflow.steps ?? [])].sort(
+    (a, b) => a.stepOrder - b.stepOrder
+  );
 
-  const nodes: Node<WorkflowStepNodeData>[] = orderedSteps.map((step, index) => ({
-    id: step.id,
-    type: NODE_TYPE,
-    position: {
-      x: index * HORIZONTAL_SPACING,
-      y: NODE_Y_POSITION,
-    },
-    data: { step },
-    draggable: true,
-    selectable: true,
-  }));
+  const nodes: Node<WorkflowStepNodeData>[] = orderedSteps.map(
+    (step, index) => ({
+      id: step.id,
+      type: NODE_TYPE,
+      position: {
+        x: index * HORIZONTAL_SPACING,
+        y: NODE_Y_POSITION,
+      },
+      data: {
+        step,
+      },
+      draggable: true,
+      selectable: true,
+    })
+  );
 
   const edges: Edge[] = orderedSteps.slice(1).map((step, index) => {
     const previousStep = orderedSteps[index];
@@ -52,5 +58,8 @@ export function buildWorkflowFlow(workflow: Workflow): {
     };
   });
 
-  return { nodes, edges };
+  return {
+    nodes,
+    edges,
+  };
 }

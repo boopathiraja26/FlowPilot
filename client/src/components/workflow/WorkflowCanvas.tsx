@@ -18,6 +18,7 @@ import ReactFlow, {
   useEdgesState,
   useNodesState,
 } from "reactflow";
+
 import "reactflow/dist/style.css";
 
 import WorkflowStepNode from "@/components/workflow/WorkflowStepNode";
@@ -42,6 +43,11 @@ const nodeTypes: NodeTypes = {
 interface WorkflowCanvasProps {
   workflow: Workflow;
 
+  onNodeClick?: (
+    event: React.MouseEvent,
+    node: Node<WorkflowStepNodeData>
+  ) => void;
+
   onNodeDragStop?: (
     event: React.MouseEvent,
     node: Node<WorkflowStepNodeData>,
@@ -59,8 +65,9 @@ interface WorkflowCanvasProps {
 // WorkflowCanvas
 // =========================================================
 
-export function WorkflowCanvas({
+function WorkflowCanvasInner({
   workflow,
+  onNodeClick,
   onNodeDragStop,
   onConnect,
   onNodesChange,
@@ -76,37 +83,40 @@ export function WorkflowCanvas({
     useEdgesState(initialEdges);
 
   // =========================================================
-  // Sync workflow changes
+  // Sync only when workflow data actually changes
   // =========================================================
 
   useEffect(() => {
-    const { nodes, edges } = buildWorkflowFlow(workflow);
+    const { nodes: nextNodes, edges: nextEdges } =
+      buildWorkflowFlow(workflow);
 
-    setNodes(nodes);
-    setEdges(edges);
+    setNodes(nextNodes);
+    setEdges(nextEdges);
   }, [workflow, setNodes, setEdges]);
 
   // =========================================================
-  // Drag Stop
+  // Node drag
   // =========================================================
 
   const handleNodeDragStop = useCallback(
     (
       event: React.MouseEvent,
-      node: Node
+      node: Node<WorkflowStepNodeData>
     ) => {
-      onNodeDragStop?.(event, node as Node<WorkflowStepNodeData>, nodes);
+      onNodeDragStop?.(event, node, nodes);
     },
     [onNodeDragStop, nodes]
   );
 
   // =========================================================
-  // Connect Nodes
+  // Connect
   // =========================================================
 
   const handleConnect = useCallback(
     (connection: Connection) => {
-      setEdges((current) => addEdge(connection, current));
+      setEdges((currentEdges) =>
+        addEdge(connection, currentEdges)
+      );
 
       onConnect?.(connection);
     },
@@ -114,26 +124,24 @@ export function WorkflowCanvas({
   );
 
   // =========================================================
-  // Node Changes
+  // Node changes
   // =========================================================
 
   const handleNodesChange = useCallback(
     (changes: NodeChange[]) => {
       internalNodesChange(changes);
-
       onNodesChange?.(changes);
     },
     [internalNodesChange, onNodesChange]
   );
 
   // =========================================================
-  // Edge Changes
+  // Edge changes
   // =========================================================
 
   const handleEdgesChange = useCallback(
     (changes: EdgeChange[]) => {
       internalEdgesChange(changes);
-
       onEdgesChange?.(changes);
     },
     [internalEdgesChange, onEdgesChange]
@@ -144,36 +152,40 @@ export function WorkflowCanvas({
   // =========================================================
 
   return (
-    <div className="h-full w-full rounded-xl overflow-hidden">
-      <ReactFlowProvider>
-        <ReactFlow
-  nodes={nodes}
-  edges={edges}
-  onNodeClick={(_, node) => {
-    onNodesChange?.([
-      {
-        id: node.id,
-        type: "select",
-        selected: true,
-      },
-    ]);
-  }}
-          nodeTypes={nodeTypes}
-          onNodesChange={handleNodesChange}
-          onEdgesChange={handleEdgesChange}
-          onConnect={handleConnect}
-          onNodeDragStop={handleNodeDragStop}
-          nodesDraggable
-          nodesConnectable
-          elementsSelectable
-          fitView
-          attributionPosition="bottom-left"
-        >
-          <Background />
-          <MiniMap pannable zoomable />
-          <Controls />
-        </ReactFlow>
-      </ReactFlowProvider>
-    </div>
+    <ReactFlow
+      nodes={nodes}
+      edges={edges}
+      nodeTypes={nodeTypes}
+      onNodeClick={onNodeClick}
+      onNodesChange={handleNodesChange}
+      onEdgesChange={handleEdgesChange}
+      onConnect={handleConnect}
+      onNodeDragStop={handleNodeDragStop}
+      nodesDraggable
+      nodesConnectable
+      elementsSelectable
+      fitView
+      fitViewOptions={{
+        padding: 0.2,
+        duration: 0,
+      }}
+      attributionPosition="bottom-left"
+    >
+      <Background />
+      <Controls />
+      <MiniMap />
+    </ReactFlow>
+  );
+}
+
+// =========================================================
+// Provider wrapper
+// =========================================================
+
+export function WorkflowCanvas(props: WorkflowCanvasProps) {
+  return (
+    <ReactFlowProvider>
+      <WorkflowCanvasInner {...props} />
+    </ReactFlowProvider>
   );
 }

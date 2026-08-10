@@ -1,3 +1,5 @@
+"use client";
+
 import { Handle, NodeProps, Position } from "reactflow";
 
 import { WorkflowStepNodeData } from "@/lib/workflow-flow";
@@ -22,24 +24,28 @@ const STEP_TYPE_STYLES: Record<
     ring: "ring-emerald-200",
     dot: "bg-emerald-500",
   },
+
   AI: {
     badgeBg: "bg-purple-100",
     badgeText: "text-purple-700",
     ring: "ring-purple-200",
     dot: "bg-purple-500",
   },
+
   EMAIL: {
     badgeBg: "bg-blue-100",
     badgeText: "text-blue-700",
     ring: "ring-blue-200",
     dot: "bg-blue-500",
   },
+
   DELAY: {
     badgeBg: "bg-orange-100",
     badgeText: "text-orange-700",
     ring: "ring-orange-200",
     dot: "bg-orange-500",
   },
+
   WEBHOOK: {
     badgeBg: "bg-pink-100",
     badgeText: "text-pink-700",
@@ -56,13 +62,14 @@ function WorkflowStepNode({
   data,
 }: NodeProps<WorkflowStepNodeData>) {
   const { step } = data;
+
   const style = STEP_TYPE_STYLES[step.type];
 
   return (
     <div
       className={`w-56 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm ring-1 ${style.ring}`}
     >
-      {/* Incoming Connection */}
+      {/* Incoming connection */}
       <Handle
         type="target"
         position={Position.Left}
@@ -82,7 +89,7 @@ function WorkflowStepNode({
         </span>
       </div>
 
-      {/* Step Name */}
+      {/* Step name */}
       <p
         className="mt-3 truncate text-sm font-semibold text-gray-900"
         title={step.name}
@@ -90,7 +97,7 @@ function WorkflowStepNode({
         {step.name}
       </p>
 
-      {/* Outgoing Connection */}
+      {/* Outgoing connection */}
       <Handle
         type="source"
         position={Position.Right}
