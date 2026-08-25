@@ -12,6 +12,10 @@ import {
   StepEditorValues,
 } from "@/components/workflow/StepEditor";
 import { AddStepDialog } from "@/components/workflow/AddStepDialog";
+import {
+  ExecuteWorkflowModal,
+  RuntimeTriggerPayload,
+} from "@/components/execution/ExecuteWorkflowModal";
 
 import {
   createStep,
@@ -328,11 +332,78 @@ export default function WorkflowBuilderPage() {
     }
   }
 
+  const [isExecuteModalOpen, setIsExecuteModalOpen] = useState(false);
+
+  // Extract initial values from saved TRIGGER step config if available
+  const triggerStep = workflow?.steps?.find((s) => s.type === "TRIGGER");
+  const triggerConfig = (triggerStep?.config as Record<string, unknown>) ?? {};
+  const initialExecutionValues: Partial<RuntimeTriggerPayload> = {
+    employee_name:
+      typeof triggerConfig.employee_name === "string"
+        ? triggerConfig.employee_name
+        : typeof triggerConfig.name === "string"
+        ? triggerConfig.name
+        : "",
+    employee_email:
+      typeof triggerConfig.employee_email === "string"
+        ? triggerConfig.employee_email
+        : typeof triggerConfig.email === "string"
+        ? triggerConfig.email
+        : "",
+    job_title:
+      typeof triggerConfig.job_title === "string"
+        ? triggerConfig.job_title
+        : "",
+    department:
+      typeof triggerConfig.department === "string"
+        ? triggerConfig.department
+        : "",
+    manager_name:
+      typeof triggerConfig.manager_name === "string"
+        ? triggerConfig.manager_name
+        : typeof triggerConfig.manager === "string"
+        ? triggerConfig.manager
+        : typeof triggerConfig.reporting_manager === "string"
+        ? triggerConfig.reporting_manager
+        : "",
+    manager_email:
+      typeof triggerConfig.manager_email === "string"
+        ? triggerConfig.manager_email
+        : "",
+    start_date:
+      typeof triggerConfig.start_date === "string"
+        ? triggerConfig.start_date
+        : "",
+    company_name:
+      typeof triggerConfig.company_name === "string"
+        ? triggerConfig.company_name
+        : "",
+    company_address:
+      typeof triggerConfig.company_address === "string"
+        ? triggerConfig.company_address
+        : "",
+    company_phone:
+      typeof triggerConfig.company_phone === "string"
+        ? triggerConfig.company_phone
+        : "",
+    event:
+      typeof triggerConfig.event === "string"
+        ? triggerConfig.event
+        : "employee_added",
+  };
+
   // =========================================================
   // Execute workflow
   // =========================================================
 
-  async function handleExecuteWorkflow() {
+  function handleOpenExecuteModal() {
+    if (!workflow) return;
+    setActionError(null);
+    setActionMessage(null);
+    setIsExecuteModalOpen(true);
+  }
+
+  async function handleRunExecution(payload: RuntimeTriggerPayload) {
     if (!workflow) return;
 
     setIsExecuting(true);
@@ -342,41 +413,22 @@ export default function WorkflowBuilderPage() {
     try {
       const response = await api.post(
         `/executions/${workflow.id}`,
-        {
-          employee_name: "Boopathi",
-          employee_email:
-            "boopathiraja26ab@gmail.com",
-          department: "Engineering",
-          job_title: "Software Developer",
-          company_name: "FlowPilot",
-          manager_name: "Admin",
-          manager_email:
-            "admin@flowpilot.com",
-          start_date: "2026-08-10",
-          company_address:
-            "Salem, Tamil Nadu",
-          company_phone:
-            "+91 9876543210",
-          event: "employee_added",
-        }
+        payload
       );
 
-      const executionId =
-        response.data?.data?.execution?.id;
-
-      if (executionId) {
-        router.push(
-          `/dashboard/executions/${executionId}`
-        );
-      } else {
-        setActionMessage(
-          `Execution ${response.data.data.execution.status}`
-        );
+      const execution = response.data?.data?.execution;
+      if (execution?.status === "FAILED") {
+        throw new Error("Workflow execution failed on server.");
       }
-    } catch {
-      setActionError(
-        "Couldn't start execution. Please try again."
-      );
+
+      setActionMessage("Workflow execution completed successfully.");
+      return response.data;
+    } catch (err: unknown) {
+      const errorMsg =
+        (err as { response?: { data?: { message?: string } }; message?: string })?.response?.data
+          ?.message || (err as { message?: string })?.message || "Couldn't start execution. Please try again.";
+      setActionError(errorMsg);
+      throw new Error(errorMsg);
     } finally {
       setIsExecuting(false);
     }
@@ -416,7 +468,7 @@ export default function WorkflowBuilderPage() {
       {!isLoading &&
         !fetchError &&
         workflow && (
-          <div className="flex h-[calc(100vh-4rem-3rem)] flex-col gap-4">
+          <div className="flex h-[calc(100vh-4rem-3rem)] lg:h-[calc(100vh-4rem-4rem)] w-full min-w-0 flex-col gap-4 overflow-hidden">
             {/* Header */}
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
@@ -455,7 +507,7 @@ export default function WorkflowBuilderPage() {
 
                 <button
                   type="button"
-                  onClick={handleExecuteWorkflow}
+                  onClick={handleOpenExecuteModal}
                   disabled={
                     isSaving || isExecuting
                   }
@@ -489,8 +541,8 @@ export default function WorkflowBuilderPage() {
             />
 
             {/* Canvas + editor */}
-            <div className="flex min-h-0 flex-1 gap-4">
-              <div className="min-w-0 flex-1 overflow-hidden rounded-2xl border border-gray-200 bg-white">
+            <div className="flex min-h-0 flex-1 flex-col lg:flex-row gap-4 w-full min-w-0 overflow-hidden">
+              <div className="relative min-w-0 flex-1 min-h-[350px] lg:min-h-0 overflow-hidden rounded-2xl border border-gray-200 bg-white">
                 <WorkflowCanvas
                   key={canvasKey}
                   workflow={workflow}
@@ -502,7 +554,7 @@ export default function WorkflowBuilderPage() {
               </div>
 
               {/* Editor */}
-              <div className="w-96 shrink-0 overflow-y-auto">
+              <div className="w-full lg:w-80 xl:w-96 shrink-0 overflow-y-auto max-h-[400px] lg:max-h-full">
                 {selectedStep ? (
                   <StepEditor
                     key={selectedStep.id}
@@ -512,7 +564,7 @@ export default function WorkflowBuilderPage() {
                     isSaving={isStepSaving}
                   />
                 ) : (
-                  <div className="flex h-full min-h-[200px] items-center justify-center rounded-2xl border border-dashed border-gray-300 bg-white">
+                  <div className="flex h-full min-h-[180px] lg:min-h-full items-center justify-center rounded-2xl border border-dashed border-gray-300 bg-white">
                     <div className="px-6 text-center">
                       <p className="text-sm font-medium text-gray-700">
                         No step selected
@@ -537,6 +589,17 @@ export default function WorkflowBuilderPage() {
           setIsAddDialogOpen(false)
         }
         onCreate={handleCreateStep}
+      />
+
+      {/* Execute workflow runtime modal */}
+      <ExecuteWorkflowModal
+        isOpen={isExecuteModalOpen}
+        onClose={() => setIsExecuteModalOpen(false)}
+        onExecute={handleRunExecution}
+        initialValues={initialExecutionValues}
+        workflowTitle={workflow?.title}
+        isExecuting={isExecuting}
+        executionError={actionError}
       />
     </DashboardShell>
   );

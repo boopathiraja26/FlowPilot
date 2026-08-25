@@ -10,7 +10,7 @@ import { ApiError } from "../middleware/errorHandler";
 import { generateAIResponse } from "./gemini.service";
 import { sendEmail } from "./email.service";
 import { executeWebhook } from "./webhook.service";
-import { resolveTemplate, resolveObjectTemplates } from "../utils/template";
+import { resolveTemplate, resolveObjectTemplates, renderWelcomeEmailHtml } from "../utils/template";
 
 // =========================================================
 // Get workflow with ownership + steps
@@ -99,26 +99,26 @@ async function executeSingleStep(
       const input = triggerInput ?? {};
 
       const getValue = (key: string, altKey?: string) => {
-        if (typeof input[key] === "string") return input[key] as string;
-        if (typeof config[key] === "string") return config[key] as string;
-        if (altKey && typeof input[altKey] === "string") return input[altKey] as string;
-        if (altKey && typeof config[altKey] === "string") return config[altKey] as string;
+        if (typeof input[key] === "string" && (input[key] as string).trim()) return (input[key] as string).trim();
+        if (altKey && typeof input[altKey] === "string" && (input[altKey] as string).trim()) return (input[altKey] as string).trim();
+        if (typeof config[key] === "string" && (config[key] as string).trim()) return (config[key] as string).trim();
+        if (altKey && typeof config[altKey] === "string" && (config[altKey] as string).trim()) return (config[altKey] as string).trim();
         return "";
       };
 
       const triggerData = {
+        ...config,
+        ...input,
         employee_name: getValue("employee_name", "name"),
         employee_email: getValue("employee_email", "email"),
         department: getValue("department"),
         job_title: getValue("job_title"),
-        company_name: getValue("company_name"),
-        manager_name: getValue("manager_name"),
+        company_name: getValue("company_name") || "FlowPilot",
+        manager_name: getValue("manager_name", "manager"),
         manager_email: getValue("manager_email"),
         start_date: getValue("start_date"),
         company_address: getValue("company_address"),
         company_phone: getValue("company_phone"),
-        ...config,
-        ...input,
       };
 
       return {
@@ -129,16 +129,16 @@ async function executeSingleStep(
     }
 
     case "AI": {
-  const trigger = context.trigger;
+      const trigger = context.trigger || {};
 
-  const config = (step.config as Record<string, unknown>) ?? {};
+      const config = (step.config as Record<string, unknown>) ?? {};
 
-  const instructions =
-    typeof config.prompt === "string"
-      ? config.prompt
-      : "Generate a professional welcome email.";
+      const instructions =
+        typeof config.prompt === "string"
+          ? config.prompt
+          : "Generate a professional welcome email.";
 
-  const prompt = `
+      const prompt = `
 You are an HR assistant.
 
 Employee Name: ${trigger.employee_name}
@@ -153,40 +153,48 @@ Instructions:
 ${instructions}
 `;
 
-  const response = await generateAIResponse(prompt);
+      const response = await generateAIResponse(prompt);
 
-  return {
-    success: true,
-    message: "AI content generated successfully.",
-    output: response,
-  };
-}
+      return {
+        success: true,
+        message: "AI content generated successfully.",
+        output: response,
+      };
+    }
 
-   case "EMAIL": {
-  const trigger = context.trigger;
+    case "EMAIL": {
+      const trigger = context.trigger || {};
+      const aiOutput = context.step_2?.output || context.step_1?.output;
 
-  const aiOutput = context.step_2?.output;
+      if (!trigger.employee_email) {
+        throw new Error("Employee email is missing.");
+      }
 
-  if (!trigger.employee_email) {
-    throw new Error("Employee email is missing.");
-  }
+      const companyName = trigger.company_name || "FlowPilot";
+      const employeeName = trigger.employee_name || "Team Member";
+      const subject = `Welcome to ${companyName}, ${employeeName}! 🚀`;
 
-  await sendEmail(
-    trigger.employee_email,
-    `Welcome to the team, ${trigger.employee_name}!`,
-    aiOutput
-  );
+      const htmlContent = renderWelcomeEmailHtml(
+        trigger,
+        typeof aiOutput === "string" ? aiOutput : undefined
+      );
 
-  return {
-    success: true,
-    message: `Email sent to ${trigger.employee_email}`,
-    output: {
-      to: trigger.employee_email,
-      subject: `Welcome to the team, ${trigger.employee_name}!`,
-      body: aiOutput,
-    },
-  };
-}
+      await sendEmail(
+        trigger.employee_email,
+        subject,
+        htmlContent
+      );
+
+      return {
+        success: true,
+        message: `Welcome email sent to ${trigger.employee_email}`,
+        output: {
+          to: trigger.employee_email,
+          subject,
+          body: htmlContent,
+        },
+      };
+    }
     case "WEBHOOK": {
       const config = (step.config as Record<string, unknown>) ?? {};
 
@@ -321,7 +329,9 @@ export async function executeWorkflow(
           execution.id,
           step,
           ExecutionStatus.COMPLETED,
-          result.message
+          step.type === "AI" && typeof result.output === "string"
+            ? result.output
+            : result.message
         );
       } catch (err) {
         await createExecutionLog(
@@ -346,6 +356,13 @@ export async function executeWorkflow(
         data: {
           status: ExecutionStatus.COMPLETED,
           completedAt: new Date(),
+        },
+        include: {
+          logs: {
+            orderBy: {
+              startedAt: "asc",
+            },
+          },
         },
       });
 

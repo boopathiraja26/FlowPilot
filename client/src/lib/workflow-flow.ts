@@ -16,7 +16,10 @@ const NODE_Y_POSITION = 0;
 
 export interface WorkflowStepNodeData {
   step: WorkflowStep;
+  status?: "COMPLETED" | "RUNNING" | "FAILED" | "PENDING";
+  isActive?: boolean;
 }
+
 
 // =========================================================
 // Build workflow nodes + edges

@@ -17,11 +17,13 @@ import ReactFlow, {
   ReactFlowProvider,
   useEdgesState,
   useNodesState,
+  BackgroundVariant,
 } from "reactflow";
 
 import "reactflow/dist/style.css";
 
 import WorkflowStepNode from "@/components/workflow/WorkflowStepNode";
+import { AnimatedWorkflowEdge } from "@/components/workflow/AnimatedWorkflowEdge";
 import {
   buildWorkflowFlow,
   WorkflowStepNodeData,
@@ -29,11 +31,17 @@ import {
 import { Workflow } from "@/types/workflow";
 
 // =========================================================
-// Node Types
+// Node & Edge Types
 // =========================================================
 
 const nodeTypes: NodeTypes = {
   workflowStep: WorkflowStepNode,
+};
+
+const edgeTypes = {
+  animatedEdge: AnimatedWorkflowEdge,
+  smoothstep: AnimatedWorkflowEdge,
+  default: AnimatedWorkflowEdge,
 };
 
 // =========================================================
@@ -59,10 +67,12 @@ interface WorkflowCanvasProps {
   onNodesChange?: OnNodesChange;
 
   onEdgesChange?: OnEdgesChange;
+  
+  executingStepId?: string | null;
 }
 
 // =========================================================
-// WorkflowCanvas
+// WorkflowCanvasInner
 // =========================================================
 
 function WorkflowCanvasInner({
@@ -72,6 +82,7 @@ function WorkflowCanvasInner({
   onConnect,
   onNodesChange,
   onEdgesChange,
+  executingStepId,
 }: WorkflowCanvasProps) {
   const { nodes: initialNodes, edges: initialEdges } =
     buildWorkflowFlow(workflow);
@@ -83,16 +94,35 @@ function WorkflowCanvasInner({
     useEdgesState(initialEdges);
 
   // =========================================================
-  // Sync only when workflow data actually changes
+  // Sync when workflow or executingStepId changes
   // =========================================================
 
   useEffect(() => {
     const { nodes: nextNodes, edges: nextEdges } =
       buildWorkflowFlow(workflow);
 
-    setNodes(nextNodes);
-    setEdges(nextEdges);
-  }, [workflow, setNodes, setEdges]);
+    // Apply active execution states if executingStepId is provided
+    const updatedNodes = nextNodes.map((n) => {
+      const isCurrentStep = n.id === executingStepId;
+      return {
+        ...n,
+        data: {
+          ...n.data,
+          isActive: isCurrentStep,
+          status: isCurrentStep ? ("RUNNING" as const) : undefined,
+        },
+      };
+    });
+
+    const updatedEdges = nextEdges.map((e) => ({
+      ...e,
+      type: "animatedEdge",
+      animated: Boolean(executingStepId && (e.source === executingStepId || e.target === executingStepId)),
+    }));
+
+    setNodes(updatedNodes);
+    setEdges(updatedEdges);
+  }, [workflow, executingStepId, setNodes, setEdges]);
 
   // =========================================================
   // Node drag
@@ -115,7 +145,7 @@ function WorkflowCanvasInner({
   const handleConnect = useCallback(
     (connection: Connection) => {
       setEdges((currentEdges) =>
-        addEdge(connection, currentEdges)
+        addEdge({ ...connection, type: "animatedEdge" }, currentEdges)
       );
 
       onConnect?.(connection);
@@ -156,6 +186,7 @@ function WorkflowCanvasInner({
       nodes={nodes}
       edges={edges}
       nodeTypes={nodeTypes}
+      edgeTypes={edgeTypes}
       onNodeClick={onNodeClick}
       onNodesChange={handleNodesChange}
       onEdgesChange={handleEdgesChange}
@@ -166,14 +197,20 @@ function WorkflowCanvasInner({
       elementsSelectable
       fitView
       fitViewOptions={{
-        padding: 0.2,
-        duration: 0,
+        padding: 0.25,
+        duration: 200,
       }}
       attributionPosition="bottom-left"
+      className="bg-slate-50/60"
     >
-      <Background />
-      <Controls />
-      <MiniMap />
+      <Background variant={BackgroundVariant.Dots} gap={24} size={1.5} color="#cbd5e1" />
+      <Controls className="!bg-white !border-slate-200 !shadow-sm !rounded-xl overflow-hidden" />
+      <MiniMap
+        nodeColor="#3457ff"
+        maskColor="rgba(248, 250, 252, 0.75)"
+        style={{ width: 150, height: 100 }}
+        className="!bg-white !border-slate-200 !rounded-xl !shadow-sm overflow-hidden"
+      />
     </ReactFlow>
   );
 }

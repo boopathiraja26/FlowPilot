@@ -9,7 +9,11 @@ const transporter = nodemailer.createTransport({
     user: env.email.user,
     pass: env.email.pass,
   },
-});
+  family: 4,
+  connectionTimeout: 10000,
+  greetingTimeout: 10000,
+  socketTimeout: 15000,
+} as nodemailer.TransportOptions);
 
 export async function sendEmail(
   to: string,
@@ -22,4 +26,4 @@ export async function sendEmail(
     subject,
     html,
   });
-}
+}

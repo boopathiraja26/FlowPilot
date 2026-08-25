@@ -12,7 +12,7 @@ import { apiLimiter } from "./middleware/rateLimiter";
 
 const app: Application = express();
 
-// Security headers
+// Security headers-
 app.use(helmet());
 
 // CORS

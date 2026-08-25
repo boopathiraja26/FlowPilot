@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Sparkles, Bot, AlertCircle } from "lucide-react";
 
 import { DashboardShell } from "@/components/layout/DashboardShell";
 import { PromptForm } from "@/components/workflow/PromptForm";
@@ -55,39 +56,54 @@ export default function NewWorkflowPage() {
 
   return (
     <DashboardShell>
-      <div className="mb-6">
-        <h2 className="text-lg font-semibold text-gray-900">AI Workflow Builder</h2>
-        <p className="text-sm text-gray-500">
-          Describe what you want to automate and let FlowPilot build it for you.
-        </p>
-      </div>
-
-      {error && (
-        <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4">
-          <p className="text-sm font-medium text-red-700">{error}</p>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center gap-3 border-b border-slate-200/80 pb-5">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-purple-50 text-purple-600 border border-purple-100 shadow-sm">
+            <Sparkles className="h-6 w-6" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-2xl font-extrabold tracking-tight text-slate-900">AI Workflow Builder</h2>
+              <span className="rounded-full bg-purple-50 px-2.5 py-0.5 text-xs font-bold text-purple-700 border border-purple-100">
+                Gemini AI
+              </span>
+            </div>
+            <p className="mt-0.5 text-sm text-slate-500">
+              Describe your automation scenario in plain text and let AI generate the workflow steps.
+            </p>
+          </div>
         </div>
-      )}
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div>
-          <PromptForm onGenerate={handleGenerate} isLoading={isGenerating} />
-        </div>
+        {error && (
+          <div className="flex items-center gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-xs font-semibold text-rose-700 animate-fade-in">
+            <AlertCircle className="h-5 w-5 shrink-0 text-rose-600" />
+            <p>{error}</p>
+          </div>
+        )}
 
-        <div>
-          {workflow ? (
-            <WorkflowPreview workflow={workflow} onSave={handleSave} isSaving={isSaving} />
-          ) : (
-            <div className="flex h-full min-h-[200px] items-center justify-center rounded-2xl border border-dashed border-gray-300 bg-white">
-              <div className="text-center">
-                <p className="text-sm font-medium text-gray-700">No workflow generated yet</p>
-                <p className="mt-1 text-sm text-gray-400">
-                  Your generated workflow will appear here.
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div>
+            <PromptForm onGenerate={handleGenerate} isLoading={isGenerating} />
+          </div>
+
+          <div>
+            {workflow ? (
+              <WorkflowPreview workflow={workflow} onSave={handleSave} isSaving={isSaving} />
+            ) : (
+              <div className="flex h-full min-h-[300px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white/70 p-8 text-center backdrop-blur-sm">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-50 text-purple-600 mb-3 animate-float">
+                  <Bot className="h-6 w-6" />
+                </div>
+                <h3 className="text-sm font-bold text-slate-800">No workflow generated yet</h3>
+                <p className="mt-1 max-w-xs text-xs text-slate-400">
+                  Enter your automation prompt on the left to watch Gemini build your pipeline steps in real time.
                 </p>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </DashboardShell>
   );
-}
+}
