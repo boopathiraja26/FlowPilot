@@ -2,11 +2,31 @@
 node_modules/
 **/node_modules/
 
-# Environment
+# Environment / Secrets
 .env
 .env.local
 .env.*.local
 !.env.example
+server.zip
+
+# Credentials / Private Keys
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+service-account.json
+service-account-key.json
+google-credentials.json
+*-credentials.json
+secrets.json
+
+# Archives / Deployment packages
+*.zip
+*.tar
+*.tar.gz
+*.7z
+*.rar
 
 # Build outputs
 client/.next/
@@ -37,5 +57,4 @@ next-env.d.ts
 coverage/
 
 # Misc
-*.pem
 .turbo/
