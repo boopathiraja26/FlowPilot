@@ -12,6 +12,11 @@ import { apiLimiter } from "./middleware/rateLimiter";
 
 const app: Application = express();
 
+// Trust the first proxy hop (Render's load balancer).
+// Required so express-rate-limit can safely read X-Forwarded-For
+// without throwing ERR_ERL_UNEXPECTED_X_FORWARDED_FOR.
+app.set("trust proxy", 1);
+
 // Security headers-
 app.use(helmet());
 
