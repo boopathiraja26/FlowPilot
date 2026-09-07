@@ -1,5 +1,11 @@
 import nodemailer from "nodemailer";
+import dns from "dns";
 import { env } from "../config/env";
+
+// Prefer IPv4 DNS lookup to prevent ENETUNREACH errors on platforms without IPv6 routing (e.g. Render)
+if (typeof dns.setDefaultResultOrder === "function") {
+  dns.setDefaultResultOrder("ipv4first");
+}
 
 const transporter = nodemailer.createTransport({
   host: env.email.host,

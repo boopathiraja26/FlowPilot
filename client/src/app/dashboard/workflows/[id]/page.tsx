@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Node } from "reactflow";
 
@@ -335,62 +335,64 @@ export default function WorkflowBuilderPage() {
   const [isExecuteModalOpen, setIsExecuteModalOpen] = useState(false);
 
   // Extract initial values from saved TRIGGER step config if available
-  const triggerStep = workflow?.steps?.find((s) => s.type === "TRIGGER");
-  const triggerConfig = (triggerStep?.config as Record<string, unknown>) ?? {};
-  const initialExecutionValues: Partial<RuntimeTriggerPayload> = {
-    employee_name:
-      typeof triggerConfig.employee_name === "string"
-        ? triggerConfig.employee_name
-        : typeof triggerConfig.name === "string"
-        ? triggerConfig.name
-        : "",
-    employee_email:
-      typeof triggerConfig.employee_email === "string"
-        ? triggerConfig.employee_email
-        : typeof triggerConfig.email === "string"
-        ? triggerConfig.email
-        : "",
-    job_title:
-      typeof triggerConfig.job_title === "string"
-        ? triggerConfig.job_title
-        : "",
-    department:
-      typeof triggerConfig.department === "string"
-        ? triggerConfig.department
-        : "",
-    manager_name:
-      typeof triggerConfig.manager_name === "string"
-        ? triggerConfig.manager_name
-        : typeof triggerConfig.manager === "string"
-        ? triggerConfig.manager
-        : typeof triggerConfig.reporting_manager === "string"
-        ? triggerConfig.reporting_manager
-        : "",
-    manager_email:
-      typeof triggerConfig.manager_email === "string"
-        ? triggerConfig.manager_email
-        : "",
-    start_date:
-      typeof triggerConfig.start_date === "string"
-        ? triggerConfig.start_date
-        : "",
-    company_name:
-      typeof triggerConfig.company_name === "string"
-        ? triggerConfig.company_name
-        : "",
-    company_address:
-      typeof triggerConfig.company_address === "string"
-        ? triggerConfig.company_address
-        : "",
-    company_phone:
-      typeof triggerConfig.company_phone === "string"
-        ? triggerConfig.company_phone
-        : "",
-    event:
-      typeof triggerConfig.event === "string"
-        ? triggerConfig.event
-        : "employee_added",
-  };
+  const initialExecutionValues = useMemo<Partial<RuntimeTriggerPayload>>(() => {
+    const triggerStep = workflow?.steps?.find((s) => s.type === "TRIGGER");
+    const triggerConfig = (triggerStep?.config as Record<string, unknown>) ?? {};
+    return {
+      employee_name:
+        typeof triggerConfig.employee_name === "string"
+          ? triggerConfig.employee_name
+          : typeof triggerConfig.name === "string"
+          ? triggerConfig.name
+          : "",
+      employee_email:
+        typeof triggerConfig.employee_email === "string"
+          ? triggerConfig.employee_email
+          : typeof triggerConfig.email === "string"
+          ? triggerConfig.email
+          : "",
+      job_title:
+        typeof triggerConfig.job_title === "string"
+          ? triggerConfig.job_title
+          : "",
+      department:
+        typeof triggerConfig.department === "string"
+          ? triggerConfig.department
+          : "",
+      manager_name:
+        typeof triggerConfig.manager_name === "string"
+          ? triggerConfig.manager_name
+          : typeof triggerConfig.manager === "string"
+          ? triggerConfig.manager
+          : typeof triggerConfig.reporting_manager === "string"
+          ? triggerConfig.reporting_manager
+          : "",
+      manager_email:
+        typeof triggerConfig.manager_email === "string"
+          ? triggerConfig.manager_email
+          : "",
+      start_date:
+        typeof triggerConfig.start_date === "string"
+          ? triggerConfig.start_date
+          : "",
+      company_name:
+        typeof triggerConfig.company_name === "string"
+          ? triggerConfig.company_name
+          : "",
+      company_address:
+        typeof triggerConfig.company_address === "string"
+          ? triggerConfig.company_address
+          : "",
+      company_phone:
+        typeof triggerConfig.company_phone === "string"
+          ? triggerConfig.company_phone
+          : "",
+      event:
+        typeof triggerConfig.event === "string"
+          ? triggerConfig.event
+          : "employee_added",
+    };
+  }, [workflow?.steps]);
 
   // =========================================================
   // Execute workflow

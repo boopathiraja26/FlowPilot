@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, FormEvent } from "react";
+import { useRouter } from "next/navigation";
 import {
   X,
   Play,
@@ -22,6 +23,7 @@ import {
   Check,
   Bot,
   ChevronRight,
+  Activity,
 } from "lucide-react";
 
 // =========================================================
@@ -172,6 +174,8 @@ export function ExecuteWorkflowModal({
   workflowTitle,
   executionError: externalError,
 }: ExecuteWorkflowModalProps) {
+  const router = useRouter();
+
   // -- Form state --
   const [formData, setFormData] = useState<RuntimeTriggerPayload>({
     employee_name: "",
@@ -193,6 +197,8 @@ export function ExecuteWorkflowModal({
   // -- Phase & step state --
   const [phase, setPhase] = useState<ModalPhase>("form");
   const [steps, setSteps] = useState<StepStatus[]>(["pending", "pending", "pending"]);
+  const [executionId, setExecutionId] = useState<string | null>(null);
+  const [logMessages, setLogMessages] = useState<string[]>([]);
 
   // -- AI reveal --
   const [aiRevealText, setAiRevealText] = useState("");
@@ -226,9 +232,11 @@ export function ExecuteWorkflowModal({
     intervalRefs.current = [];
   }
 
+  const prevIsOpenRef = useRef(false);
+
   // -- Reset on open --
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !prevIsOpenRef.current) {
       setFormData({
         employee_name: initialValues?.employee_name || "",
         employee_email: initialValues?.employee_email || "",
@@ -252,10 +260,13 @@ export function ExecuteWorkflowModal({
       setFooterIdx(0);
       setFooterVisible(true);
       setErrorMessage(null);
+      setExecutionId(null);
+      setLogMessages([]);
       clearAllTimers();
     }
+    prevIsOpenRef.current = isOpen;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, initialValues]);
+  }, [isOpen]);
 
   // -- Cleanup on unmount --
   useEffect(() => {
@@ -339,23 +350,34 @@ export function ExecuteWorkflowModal({
     clearAllTimers();
     setPhase("executing");
     setErrorMessage(null);
-    setSteps(["pending", "pending", "pending"]);
+    setSteps(["running", "pending", "pending"]);
+    setLogMessages([
+      "FlowPilot Execution Engine v1.0 initialized",
+      `Trigger payload captured for ${formData.employee_name}`,
+    ]);
     setAiRevealText("");
     setIsRevealingAi(false);
     setAiSubStatus("Analyzing employee information...");
     setEmailStatusIdx(0);
     setFooterIdx(0);
+    setExecutionId(null);
 
-    // ── TRIGGER ────────────────────────────────────────
-    setSteps(["running", "pending", "pending"]);
-    await new Promise<void>((r) => { const t = setTimeout(r, 600); addTimer(t); });
+    // Fire backend API call immediately in background
+    const apiPromise = onExecute(formData);
+
+    // ── STEP 1: TRIGGER ANIMATION (0 - 700ms) ───────────
+    await new Promise<void>((r) => { const t = setTimeout(r, 700); addTimer(t); });
     setSteps(["completed", "running", "pending"]);
+    setLogMessages((prev) => [
+      ...prev,
+      `Trigger validated for ${formData.employee_name} (${formData.employee_email})`,
+      "Starting AI Assistant node (Gemini 2.5 Flash)...",
+    ]);
 
-    // ── AI: rotate sub-statuses while API runs ─────────
+    // ── STEP 2: AI ASSISTANT ANIMATION (700ms+) ─────────
     const aiMessages = [
-      "Analyzing employee information...",
+      "Analyzing employee profile...",
       "Personalizing welcome message...",
-      "Preparing onboarding content...",
       "Crafting AI response...",
     ];
     let aiMsgIdx = 0;
@@ -363,47 +385,64 @@ export function ExecuteWorkflowModal({
     const aiRotateId = setInterval(() => {
       aiMsgIdx = (aiMsgIdx + 1) % aiMessages.length;
       setAiSubStatus(aiMessages[aiMsgIdx]);
-    }, 1800);
+    }, 600);
     addInterval(aiRotateId);
 
     try {
-      // ── Fire backend API ─────────────────────────────
-      const res = await onExecute(formData);
-
+      // Await real API response
+      const res = await apiPromise;
       clearInterval(aiRotateId);
-      setAiSubStatus("Finalizing message...");
 
-      // ── Extract AI message from response ─────────────
+      // Extract AI message & Execution ID
       const execution =
         (res as Record<string, unknown>)?.data &&
         typeof (res as Record<string, unknown>).data === "object"
           ? ((res as Record<string, Record<string, unknown>>).data.execution as Record<string, unknown> | undefined)
           : ((res as Record<string, unknown>)?.execution as Record<string, unknown> | undefined);
+
+      if (execution && typeof execution.id === "string") {
+        setExecutionId(execution.id);
+      }
+
       const logs = (execution?.logs as Array<Record<string, unknown>>) || [];
       const aiLog = logs.find((l) => l.stepType === "AI");
       const aiMessage =
         (aiLog?.message as string) ||
-        `Welcome to ${formData.company_name || "FlowPilot"}, ${formData.employee_name}! \uD83C\uDF89\n\nOn behalf of the entire team, we're thrilled to have you join us as our new ${formData.job_title || "team member"}.\n\nYour start date is ${formData.start_date || "coming soon"} \u2014 we can't wait to see the amazing things you'll accomplish.`;
+        `Welcome to ${formData.company_name || "FlowPilot"}, ${formData.employee_name}! 🎉\n\nOn behalf of the entire team, we're thrilled to have you join us as our new ${formData.job_title || "team member"}.\n\nYour start date is ${formData.start_date || "coming soon"} — we can't wait to see the amazing things you'll accomplish.`;
 
-      // ── AI typewriter reveal ─────────────────────────
+      // Minimum visual duration for AI step
+      await new Promise<void>((r) => { const t = setTimeout(r, 500); addTimer(t); });
       await revealAiText(aiMessage);
-      await new Promise<void>((r) => { const t = setTimeout(r, 400); addTimer(t); });
+      setLogMessages((prev) => [
+        ...prev,
+        "AI welcome message generated via Gemini AI",
+        "Starting Email Dispatch node...",
+      ]);
 
-      // ── AI done \u2192 Email running ──────────────────────
+      // ── STEP 3: EMAIL DISPATCH ANIMATION ──────────────
       setSteps(["completed", "completed", "running"]);
       setEmailStatusIdx(0);
+      setLogMessages((prev) => [
+        ...prev,
+        "Connecting to SMTP server...",
+        `Sending welcome email to ${formData.employee_email}...`,
+      ]);
 
-      // ── Animate email pipeline ───────────────────────
       for (let i = 0; i < EMAIL_PIPELINE.length; i++) {
         setEmailStatusIdx(i);
         await new Promise<void>((r) => {
-          const t = setTimeout(r, i === EMAIL_PIPELINE.length - 1 ? 450 : 250);
+          const t = setTimeout(r, i === EMAIL_PIPELINE.length - 1 ? 400 : 250);
           addTimer(t);
         });
       }
 
       setSteps(["completed", "completed", "completed"]);
-      await new Promise<void>((r) => { const t = setTimeout(r, 350); addTimer(t); });
+      setLogMessages((prev) => [
+        ...prev,
+        "Welcome email sent successfully",
+        "Workflow execution completed successfully",
+      ]);
+      await new Promise<void>((r) => { const t = setTimeout(r, 400); addTimer(t); });
       setPhase("success");
     } catch (err: unknown) {
       clearInterval(aiRotateId);
@@ -412,6 +451,7 @@ export function ExecuteWorkflowModal({
         externalError ||
         "Execution failed. Please check your inputs and try again.";
       setErrorMessage(msg);
+      setLogMessages((prev) => [...prev, `ERROR: ${msg}`]);
       setSteps((prev) => {
         const next = [...prev];
         const runIdx = next.indexOf("running");
@@ -496,44 +536,63 @@ export function ExecuteWorkflowModal({
         >
           {/* ── HEADER ────────────────────────────────── */}
           <div className="flex items-start justify-between gap-4 px-6 pt-5 pb-4 border-b border-slate-100 shrink-0">
-            <div>
-              <div className="flex items-center gap-2.5">
-                <h2
-                  id="exec-modal-title"
-                  className="text-base font-extrabold text-slate-900"
-                >
-                  {phase === "form"
-                    ? "Execute Workflow"
-                    : phase === "executing"
-                    ? "\u26A1 Running Workflow"
-                    : phase === "success"
-                    ? "Workflow Complete"
-                    : "Execution Failed"}
-                </h2>
+            <div className="flex items-start gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-600 text-white shadow-brand-glow mt-0.5">
+                <Zap className="h-5 w-5 fill-current" />
+              </span>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2
+                    id="exec-modal-title"
+                    className="text-base font-extrabold text-slate-900"
+                  >
+                    {phase === "form"
+                      ? "Execute Workflow"
+                      : phase === "executing"
+                      ? "Running Workflow"
+                      : phase === "success"
+                      ? "Workflow Completed!"
+                      : "Execution Failed"}
+                  </h2>
 
-                {phase === "executing" && (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-bold text-brand-700 border border-brand-200">
-                    <span className="h-1.5 w-1.5 rounded-full bg-brand-500 animate-ping" />
-                    Live
-                  </span>
+                  {phase === "executing" && (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-2.5 py-0.5 text-[10px] font-extrabold text-brand-700 border border-brand-200 shadow-sm">
+                      <span className="h-2 w-2 rounded-full bg-brand-500 animate-ping" />
+                      ● LIVE
+                    </span>
+                  )}
+
+                  {phase === "success" && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-extrabold text-emerald-700 border border-emerald-200">
+                      <Check className="h-3 w-3 stroke-[3]" />
+                      COMPLETED
+                    </span>
+                  )}
+
+                  {phase === "failed" && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-0.5 text-[10px] font-extrabold text-rose-700 border border-rose-200">
+                      <XCircle className="h-3 w-3" />
+                      FAILED
+                    </span>
+                  )}
+                </div>
+
+                {workflowTitle && (
+                  <p className="text-[11px] font-semibold text-brand-600 mt-0.5">
+                    {workflowTitle}
+                  </p>
                 )}
-              </div>
 
-              {workflowTitle && (
-                <p className="text-[11px] font-semibold text-brand-600 mt-0.5">
-                  {workflowTitle}
+                <p className="mt-0.5 text-xs text-slate-500">
+                  {phase === "form"
+                    ? "Enter employee details for runtime execution context."
+                    : phase === "executing"
+                    ? "FlowPilot engine is executing your workflow..."
+                    : phase === "success"
+                    ? "All workflow steps completed successfully."
+                    : "An error occurred during workflow execution."}
                 </p>
-              )}
-
-              <p className="mt-1 text-xs text-slate-500">
-                {phase === "form"
-                  ? "Enter employee details for runtime execution context."
-                  : phase === "executing"
-                  ? "Workflow execution in progress..."
-                  : phase === "success"
-                  ? "All steps completed successfully."
-                  : "An error occurred during execution."}
-              </p>
+              </div>
             </div>
 
             <button
@@ -833,7 +892,31 @@ export function ExecuteWorkflowModal({
 
             {/* ━━━━━━━━━━━━━━━━ EXECUTING PHASE ━━━━━━━━━━━━━━━━ */}
             {phase === "executing" && (
-              <div className="px-6 pt-5 pb-6 space-y-5 animate-fade-in">
+              <div className="px-6 pt-5 pb-6 space-y-4 animate-fade-in">
+                {/* ── Compact progress indicator ────────── */}
+                <div className="rounded-xl bg-slate-50 border border-slate-200/80 p-3.5">
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-700 mb-2">
+                    <span className="flex items-center gap-1.5 text-slate-600">
+                      <span>Trigger</span>
+                      <ChevronRight className="h-3 w-3 text-slate-400" />
+                      <span>AI Assistant</span>
+                      <ChevronRight className="h-3 w-3 text-slate-400" />
+                      <span>Email</span>
+                    </span>
+                    <span className="text-brand-600 font-mono">
+                      {steps.filter((s) => s === "completed").length} / {steps.length}
+                    </span>
+                  </div>
+                  <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                    <div
+                      className="bg-brand-600 h-full rounded-full transition-all duration-500 ease-out"
+                      style={{
+                        width: `${(steps.filter((s) => s === "completed").length / steps.length) * 100}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+
                 {/* Target pill */}
                 <div className="flex items-center justify-between rounded-xl bg-slate-50 border border-slate-200/80 px-4 py-3">
                   <div>
@@ -1014,16 +1097,36 @@ export function ExecuteWorkflowModal({
                   })}
                 </div>
 
-                {/* ── Footer status bar ───────────────── */}
-                <div className="flex items-center gap-2.5 rounded-xl bg-slate-50 border border-slate-200/70 px-4 py-2.5">
-                  <Loader2 className="h-3.5 w-3.5 text-brand-500 animate-spin shrink-0" />
-                  <p
-                    className={`text-xs font-semibold text-slate-600 transition-opacity duration-300 ${
-                      footerVisible ? "opacity-100" : "opacity-0"
-                    }`}
-                  >
-                    {FOOTER_MESSAGES[footerIdx]}
-                  </p>
+                {/* ── Live Execution Console ───────────────── */}
+                <div className="rounded-xl border border-slate-900 bg-slate-950 p-3.5 shadow-inner">
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-2 mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                      <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                        Live Execution Console
+                      </span>
+                    </div>
+                    <span className="font-mono text-[10px] text-slate-500">
+                      FlowPilot Engine
+                    </span>
+                  </div>
+                  <div className="space-y-1 font-mono text-[11px] max-h-28 overflow-y-auto pr-1">
+                    {logMessages.map((msg, i) => (
+                      <div
+                        key={i}
+                        className={`flex items-start gap-1.5 leading-relaxed ${
+                          msg.startsWith("ERROR")
+                            ? "text-rose-400"
+                            : i === logMessages.length - 1
+                            ? "text-brand-300 font-semibold"
+                            : "text-slate-400"
+                        }`}
+                      >
+                        <span className="text-slate-600 select-none">&gt;</span>
+                        <span>{msg}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
@@ -1047,9 +1150,49 @@ export function ExecuteWorkflowModal({
                   </p>
                 </div>
 
+                {/* Step checklist */}
+                <div className="mx-auto max-w-md rounded-2xl border border-slate-200/80 bg-slate-50/80 p-3.5 space-y-2 text-left">
+                  <div className="flex items-center justify-between text-xs border-b border-slate-200/60 pb-2">
+                    <span className="font-bold text-slate-800 flex items-center gap-2">
+                      <Check className="h-3.5 w-3.5 text-emerald-600 stroke-[3]" />
+                      Trigger
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-extrabold text-emerald-800">
+                      Completed
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs border-b border-slate-200/60 pb-2">
+                    <span className="font-bold text-slate-800 flex items-center gap-2">
+                      <Check className="h-3.5 w-3.5 text-emerald-600 stroke-[3]" />
+                      AI Assistant
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-extrabold text-emerald-800">
+                      Completed
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-slate-800 flex items-center gap-2">
+                      <Check className="h-3.5 w-3.5 text-emerald-600 stroke-[3]" />
+                      Email
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-extrabold text-emerald-800">
+                      Sent
+                    </span>
+                  </div>
+                </div>
+
                 {/* Summary card */}
-                <div className="mx-auto max-w-md rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4 text-left space-y-2.5 shadow-sm">
-                  <div className="flex items-center justify-between border-b border-slate-200/60 pb-2">
+                <div className="mx-auto max-w-md rounded-2xl border border-slate-200/80 bg-white p-4 text-left space-y-2.5 shadow-sm">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                      Recipient
+                    </span>
+                    <span className="text-xs font-mono font-bold text-brand-600">
+                      {formData.employee_email}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                     <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
                       Employee
                     </span>
@@ -1058,16 +1201,7 @@ export function ExecuteWorkflowModal({
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-between border-b border-slate-200/60 pb-2">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                      Email
-                    </span>
-                    <span className="text-xs font-bold text-brand-600">
-                      {formData.employee_email}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between border-b border-slate-200/60 pb-2">
+                  <div className="flex items-center justify-between">
                     <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
                       Workflow
                     </span>
@@ -1075,34 +1209,37 @@ export function ExecuteWorkflowModal({
                       {workflowTitle || "Employee Onboarding"}
                     </span>
                   </div>
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                      Steps completed
-                    </span>
-                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-extrabold text-emerald-800">
-                      <Check className="h-3.5 w-3.5 stroke-[3]" />3 / 3
-                    </span>
-                  </div>
                 </div>
 
                 {/* Email confirmation */}
-                <div className="rounded-xl border border-emerald-200 bg-emerald-50/90 p-3 text-xs font-bold text-emerald-800 flex items-center justify-center gap-2">
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50/90 p-3 text-xs font-bold text-emerald-800 flex items-center justify-center gap-2 max-w-md mx-auto">
                   <Mail className="h-4 w-4 text-emerald-600 shrink-0" />
                   <span>
-                    Welcome email sent successfully to{" "}
-                    {formData.employee_email}.
+                    Welcome email sent successfully to {formData.employee_email}.
                   </span>
                 </div>
 
-                {/* Done button */}
-                <div className="pt-2">
+                {/* Success action buttons */}
+                <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+                  {executionId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClose();
+                        router.push(`/dashboard/executions/${executionId}`);
+                      }}
+                      className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-brand-700 hover:shadow-brand-glow active:scale-[0.98]"
+                    >
+                      <Activity className="h-4 w-4" />
+                      <span>View Execution</span>
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={onClose}
-                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-8 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-brand-700 hover:shadow-brand-glow active:scale-[0.98]"
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-6 py-2.5 text-sm font-bold text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
                   >
-                    <span>Done</span>
+                    <span>Close</span>
                   </button>
                 </div>
               </div>
