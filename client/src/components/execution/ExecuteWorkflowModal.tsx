@@ -173,6 +173,7 @@ export function ExecuteWorkflowModal({
   initialValues,
   workflowTitle,
   executionError: externalError,
+  isExecuting,
 }: ExecuteWorkflowModalProps) {
   const router = useRouter();
 
@@ -196,6 +197,7 @@ export function ExecuteWorkflowModal({
 
   // -- Phase & step state --
   const [phase, setPhase] = useState<ModalPhase>("form");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [steps, setSteps] = useState<StepStatus[]>(["pending", "pending", "pending"]);
   const [executionId, setExecutionId] = useState<string | null>(null);
   const [logMessages, setLogMessages] = useState<string[]>([]);
@@ -252,6 +254,7 @@ export function ExecuteWorkflowModal({
       });
       setFormErrors({});
       setPhase("form");
+      setIsSubmitting(false);
       setSteps(["pending", "pending", "pending"]);
       setAiRevealText("");
       setIsRevealingAi(false);
@@ -345,8 +348,10 @@ export function ExecuteWorkflowModal({
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (isSubmitting || phase === "executing" || isExecuting) return;
     if (!validate()) return;
 
+    setIsSubmitting(true);
     clearAllTimers();
     setPhase("executing");
     setErrorMessage(null);
@@ -390,18 +395,40 @@ export function ExecuteWorkflowModal({
 
     try {
       // Await real API response
-      const res = await apiPromise;
+      const res = (await apiPromise) as Record<string, unknown>;
       clearInterval(aiRotateId);
 
-      // Extract AI message & Execution ID
-      const execution =
-        (res as Record<string, unknown>)?.data &&
-        typeof (res as Record<string, unknown>).data === "object"
-          ? ((res as Record<string, Record<string, unknown>>).data.execution as Record<string, unknown> | undefined)
-          : ((res as Record<string, unknown>)?.execution as Record<string, unknown> | undefined);
+      // Verify API success
+      if (res && res.success === false) {
+        throw new Error(
+          (typeof res.message === "string" && res.message) ||
+          "Workflow execution failed on server."
+        );
+      }
 
-      if (execution && typeof execution.id === "string") {
-        setExecutionId(execution.id);
+      // Extract AI message & Execution ID
+      const rawData = res?.data as Record<string, unknown> | undefined;
+      const execution =
+        rawData && typeof rawData === "object" && rawData.execution
+          ? (rawData.execution as Record<string, unknown>)
+          : (res?.execution as Record<string, unknown> | undefined) ||
+            (rawData && typeof rawData === "object" && !rawData.execution ? rawData : undefined);
+
+      if (execution && execution.status === "FAILED") {
+        throw new Error(
+          (typeof execution.message === "string" && execution.message) ||
+          "Workflow execution failed on server."
+        );
+      }
+
+      const actualExecutionId =
+        (typeof execution?.id === "string" && execution.id) ||
+        (typeof res?.executionId === "string" && res.executionId) ||
+        (typeof rawData?.executionId === "string" && rawData.executionId) ||
+        null;
+
+      if (actualExecutionId) {
+        setExecutionId(actualExecutionId);
       }
 
       const logs = (execution?.logs as Array<Record<string, unknown>>) || [];
@@ -460,6 +487,8 @@ export function ExecuteWorkflowModal({
         return next;
       });
       setPhase("failed");
+    } finally {
+      setIsSubmitting(false);
     }
   }
 

@@ -418,6 +418,10 @@ export default function WorkflowBuilderPage() {
         payload
       );
 
+      if (response.data?.success === false) {
+        throw new Error(response.data?.message || "Workflow execution failed on server.");
+      }
+
       const execution = response.data?.data?.execution;
       if (execution?.status === "FAILED") {
         throw new Error("Workflow execution failed on server.");
