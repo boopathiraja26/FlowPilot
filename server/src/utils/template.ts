@@ -158,6 +158,31 @@ function formatStartDate(dateStr?: string): string {
   return str;
 }
 
+/** Escape HTML to prevent injection */
+function escapeHtml(str: unknown): string {
+  return String(str)
+    .replace(/\u0026/g, "\u0026amp;")
+    .replace(/\u003c/g, "\u0026lt;")
+    .replace(/\u003e/g, "\u0026gt;")
+    .replace(/\\\"/g, "\u0026quot;")
+    .replace(/'/g, "\u0026#39;");
+}
+
+/**
+ * Truncate AI message to a short personalized note (2‑4 sentences).
+ * Removes leading/trailing whitespace and ensures a period at the end.
+ */
+function truncateAiMessage(message: string, maxSentences: number = 4): string {
+  const sentences = message.split(/\.\s+/).filter(Boolean);
+  const taken = sentences.slice(0, maxSentences);
+  let result = taken.join('. ');
+  if (result && !result.endsWith('.')) {
+    result += '.';
+  }
+  return result;
+}
+
+
 /**
  * Renders a production-grade, Gmail-compatible HTML welcome email.
  */
@@ -187,7 +212,7 @@ export function renderWelcomeEmailHtml(
     company_name: companyName,
   };
 
-  const cleanedAiMessage = aiBodyMessage ? cleanText(aiBodyMessage, contextMap) : "";
+  const cleanedAiMessage = aiBodyMessage ? truncateAiMessage(cleanText(aiBodyMessage, contextMap)) : "";
 
   // Build Onboarding details table rows (only display non-empty fields)
   const detailRows: { label: string; value: string }[] = [];
@@ -203,10 +228,10 @@ export function renderWelcomeEmailHtml(
       (row) => `
         <tr>
           <td style="padding: 8px 12px; font-size: 13px; font-weight: 600; color: #64748b; width: 40%; border-bottom: 1px solid #f1f5f9;">
-            ${row.label}
+            ${escapeHtml(row.label)}
           </td>
           <td style="padding: 8px 12px; font-size: 14px; font-weight: 600; color: #0f172a; border-bottom: 1px solid #f1f5f9;">
-            ${row.value}
+            ${escapeHtml(row.value)}
           </td>
         </tr>`
     )
@@ -253,23 +278,11 @@ export function renderWelcomeEmailHtml(
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Welcome to ${companyName}</title>
 </head>
-<body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; -webkit-font-smoothing: antialiased;">
-  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f1f5f9; padding: 40px 16px;">
+<body style="margin:0;padding:0;background-color:#f1f5f9;font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;color:#1e293b;-webkit-font-smoothing:antialiased;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color:#f1f5f9;padding:40px 16px;">
     <tr>
       <td align="center">
-        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 600px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05); border: 1px solid #e2e8f0;">
           
-          <!-- FLOWPILOT HEADER -->
-          <tr>
-            <td style="background-color: #2563eb; background-image: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%); padding: 36px 40px; text-align: center;">
-              <h1 style="margin: 0; color: #ffffff; font-size: 26px; font-weight: 800; letter-spacing: 3px; text-transform: uppercase;">
-                FLOWPILOT
-              </h1>
-              <p style="margin: 6px 0 0 0; color: #93c5fd; font-size: 11px; font-weight: 700; letter-spacing: 2.5px; text-transform: uppercase;">
-                AUTOMATE. CONNECT. EXECUTE.
-              </p>
-            </td>
-          </tr>
 
           <!-- WELCOME SECTION -->
           <tr>
@@ -328,10 +341,7 @@ export function renderWelcomeEmailHtml(
           <tr>
             <td style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 24px 40px; text-align: center;">
               <p style="margin: 0 0 4px 0; color: #64748b; font-size: 12px; font-weight: 500;">
-                © ${companyName}
-              </p>
-              <p style="margin: 0; color: #94a3b8; font-size: 11px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase;">
-                Automate. Connect. Execute.
+                © 2026 ${companyName}
               </p>
             </td>
           </tr>

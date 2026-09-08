@@ -87,29 +87,34 @@ export default function WorkflowBuilderPage() {
   // =========================================================
 
   async function fetchWorkflow() {
-    if (!workflowId) return;
+  if (!workflowId) return;
 
+  // Show loading spinner only on initial load (when workflow not yet loaded)
+  if (!workflow) {
     setIsLoading(true);
-    setFetchError(null);
+  }
+  setFetchError(null);
 
-    try {
-      const response = await api.get(`/workflows/${workflowId}`);
-
-      const loadedWorkflow =
-        response.data.data.workflow as Workflow;
-
-      setWorkflow({
-        ...loadedWorkflow,
-        steps: loadedWorkflow.steps ?? [],
-      });
-    } catch {
-      setFetchError(
-        "Couldn't load this workflow. It may not exist or you may not have access to it."
-      );
-    } finally {
+  try {
+    const response = await api.get(`/workflows/${workflowId}`);
+    const loadedWorkflow = response.data.data.workflow as Workflow;
+    setWorkflow({
+      ...loadedWorkflow,
+      steps: loadedWorkflow.steps ?? [],
+    });
+  } catch {
+    setFetchError(
+      "Couldn't load this workflow. It may not exist or you may not have access to it."
+    );
+  } finally {
+    // Hide loading spinner if it was shown
+    if (!workflow) {
       setIsLoading(false);
     }
   }
+}
+
+
 
   useEffect(() => {
     if (workflowId) {

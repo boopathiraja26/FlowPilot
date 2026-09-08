@@ -11,9 +11,12 @@ const navItems = [
   { label: "New Workflow", href: "/dashboard/workflows/new", icon: PlusCircle },
 ];
 
+import { useRouter } from "next/navigation";
+
 export function Sidebar() {
   const isSidebarOpen = useUIStore((state) => state.isSidebarOpen);
   const pathname = usePathname();
+  const router = useRouter();
 
   return (
     <aside
@@ -22,25 +25,21 @@ export function Sidebar() {
       }`}
     >
       {/* Brand Header */}
-      <Link
-        href="/"
-        className="flex h-16 items-center gap-3 border-b border-slate-100 px-5 transition-all duration-200 hover:bg-slate-50/80 group"
-        title="Return to FlowPilot Home"
-      >
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-600 text-white shadow-brand-glow transition-all duration-200 group-hover:bg-brand-700">
-          <Workflow className="h-5 w-5" />
-        </div>
-        {isSidebarOpen && (
-          <div className="flex flex-col">
-            <span className="text-base font-extrabold tracking-tight text-slate-900 group-hover:text-brand-600 transition-colors leading-none">
-              FlowPilot
-            </span>
-            <span className="text-[10px] font-semibold tracking-wider text-brand-600 uppercase mt-0.5">
-              Automations
-            </span>
+      <div className="flex h-16 items-center gap-3 border-b border-slate-100 px-5 transition-all duration-200 group" title="FlowPilot Brand">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-600 text-white shadow-brand-glow transition-all duration-200 group-hover:bg-brand-700">
+            <Workflow className="h-5 w-5" />
           </div>
-        )}
-      </Link>
+          {isSidebarOpen && (
+            <div className="flex flex-col">
+              <span className="text-base font-extrabold tracking-tight text-slate-900 group-hover:text-brand-600 transition-colors leading-none">
+                FlowPilot
+              </span>
+              <span className="text-[10px] font-semibold tracking-wider text-brand-600 uppercase mt-0.5">
+                Automations
+              </span>
+            </div>
+          )}
+        </div>
 
 
       {/* Navigation Links */}
