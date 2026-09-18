@@ -6,9 +6,9 @@
   --background: #f8fafc;
   --foreground: #0f172a;
   --card-bg: #ffffff;
-  --card-border: rgba(226, 232, 240, 0.8);
-  --brand-primary: #3457ff;
-  --brand-primary-hover: #1f3ce6;
+  --card-border: #e2e8f0;
+  --brand-primary: #2563eb;
+  --brand-primary-hover: #1d4ed8;
 }
 
 body {
@@ -16,9 +16,10 @@ body {
   background: var(--background);
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Custom Scrollbar for visual polish */
+/* Custom Scrollbar for Light SaaS theme */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -37,24 +38,169 @@ body {
   background: #94a3b8;
 }
 
-/* Subtle Animated Background Grid for Auth pages & Canvas background */
+/* Background Grid Patterns */
 .bg-grid-pattern {
-  background-image: radial-gradient(rgba(52, 87, 255, 0.08) 1px, transparent 1px);
+  background-image: radial-gradient(rgba(148, 163, 184, 0.25) 1px, transparent 1px);
   background-size: 24px 24px;
 }
 
-/* Glassmorphism helpers */
+.bg-grid-subtle {
+  background-image: linear-gradient(to right, rgba(226, 232, 240, 0.8) 1px, transparent 1px),
+                    linear-gradient(to bottom, rgba(226, 232, 240, 0.8) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+.bg-grid-dark {
+  background-image: radial-gradient(rgba(59, 130, 246, 0.15) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* Glassmorphism helpers for light UI */
 .glass-panel {
   background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(226, 232, 240, 0.8);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid #e2e8f0;
 }
 
 .glass-card {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+}
+
+.glass-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.08);
+}
+
+/* ReactFlow Dark Theme Overrides for Workflow Canvas */
+.react-flow__controls {
+  background: #0b101d !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 0.75rem !important;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5) !important;
+  overflow: hidden !important;
+}
+
+.react-flow__controls-button {
+  background: #0b101d !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  fill: #94a3b8 !important;
+  color: #94a3b8 !important;
+}
+
+.react-flow__controls-button:hover {
+  background: #18223a !important;
+  fill: #f8fafc !important;
+  color: #f8fafc !important;
+}
+
+.react-flow__minimap {
+  background: #0b101d !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 0.75rem !important;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5) !important;
+  overflow: hidden !important;
+}
+
+.react-flow__attribution {
+  display: none !important;
+}
+
+/* ================================================= */
+/* Scroll Reveal System                              */
+/* ================================================= */
+.scroll-reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.scroll-reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.scroll-reveal-d1 { transition-delay: 0.1s; }
+.scroll-reveal-d2 { transition-delay: 0.2s; }
+.scroll-reveal-d3 { transition-delay: 0.3s; }
+.scroll-reveal-d4 { transition-delay: 0.4s; }
+.scroll-reveal-d5 { transition-delay: 0.5s; }
+
+/* ================================================= */
+/* Travel Particle Animations (consolidated)         */
+/* ================================================= */
+@keyframes travelParticleX {
+  0% { left: 0%; opacity: 0; }
+  15% { opacity: 1; }
+  85% { opacity: 1; }
+  100% { left: calc(100% - 12px); opacity: 0; }
+}
+@keyframes travelParticleY {
+  0% { top: 0%; opacity: 0; }
+  15% { opacity: 1; }
+  85% { opacity: 1; }
+  100% { top: calc(100% - 12px); opacity: 0; }
+}
+
+/* ================================================= */
+/* Hero Ambient Gradient Motion                      */
+/* ================================================= */
+@keyframes heroGlow {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.3; }
+  33% { transform: translate(25px, -15px) scale(1.08); opacity: 0.45; }
+  66% { transform: translate(-15px, 12px) scale(0.95); opacity: 0.25; }
+}
+.hero-glow-1 { animation: heroGlow 8s ease-in-out infinite; }
+.hero-glow-2 { animation: heroGlow 10s ease-in-out infinite reverse; }
+.hero-glow-3 { animation: heroGlow 12s ease-in-out infinite 2s; }
+
+/* ================================================= */
+/* Animated Gradient Text                            */
+/* ================================================= */
+.gradient-text-animated {
+  background-size: 200% auto;
+  animation: gradientTextShift 4s linear infinite;
+}
+@keyframes gradientTextShift {
+  0% { background-position: 0% center; }
+  100% { background-position: 200% center; }
+}
+
+/* ================================================= */
+/* FAQ Smooth Accordion                              */
+/* ================================================= */
+.faq-content {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.faq-content[data-open="true"] {
+  grid-template-rows: 1fr;
+}
+.faq-content > div {
+  overflow: hidden;
+}
+
+/* ================================================= */
+/* Nav Link Animated Underline                       */
+/* ================================================= */
+.nav-link-animated {
+  position: relative;
+}
+.nav-link-animated::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: #2563eb;
+  border-radius: 999px;
+  transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.nav-link-animated:hover::after {
+  width: 100%;
 }
 
 /* Accessibility - reduced motion overrides */
@@ -67,5 +213,9 @@ body {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
-}
 
+  .scroll-reveal {
+    opacity: 1;
+    transform: none;
+  }
+}

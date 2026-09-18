@@ -31,10 +31,10 @@ export function AnimatedWorkflowEdge({
         id={id}
         className={`react-flow__edge-path stroke-[2.5px] transition-colors duration-300 ${
           selected
-            ? "stroke-brand-500"
+            ? "stroke-blue-400"
             : animated
-            ? "stroke-brand-400"
-            : "stroke-slate-300"
+            ? "stroke-blue-500"
+            : "stroke-slate-700"
         }`}
         d={edgePath}
         markerEnd={markerEnd}
@@ -46,10 +46,10 @@ export function AnimatedWorkflowEdge({
         <path
           d={edgePath}
           fill="none"
-          stroke="#3457ff"
+          stroke="#38bdf8"
           strokeWidth="3.5"
           strokeDasharray="6 12"
-          className="animate-flow-dash opacity-90 filter drop-shadow-[0_0_6px_rgba(52,87,255,0.6)]"
+          className="animate-flow-dash opacity-90 filter drop-shadow-[0_0_8px_rgba(56,189,248,0.8)]"
         />
       )}
     </>

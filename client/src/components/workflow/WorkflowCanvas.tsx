@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import ReactFlow, {
   addEdge,
   Background,
@@ -17,6 +17,7 @@ import ReactFlow, {
   ReactFlowProvider,
   useEdgesState,
   useNodesState,
+  useReactFlow,
   BackgroundVariant,
 } from "reactflow";
 
@@ -27,6 +28,9 @@ import { AnimatedWorkflowEdge } from "@/components/workflow/AnimatedWorkflowEdge
 import {
   buildWorkflowFlow,
   WorkflowStepNodeData,
+  START_X,
+  START_Y,
+  HORIZONTAL_SPACING,
 } from "@/lib/workflow-flow";
 import { Workflow } from "@/types/workflow";
 
@@ -67,8 +71,10 @@ interface WorkflowCanvasProps {
   onNodesChange?: OnNodesChange;
 
   onEdgesChange?: OnEdgesChange;
-  
+
   executingStepId?: string | null;
+
+  onAutoLayoutRef?: (autoLayoutFn: () => void) => void;
 }
 
 // =========================================================
@@ -83,9 +89,17 @@ function WorkflowCanvasInner({
   onNodesChange,
   onEdgesChange,
   executingStepId,
+  onAutoLayoutRef,
 }: WorkflowCanvasProps) {
-  const { nodes: initialNodes, edges: initialEdges } =
-    buildWorkflowFlow(workflow);
+  const { fitView } = useReactFlow();
+
+  // Stable persistent node position map across the entire editing session
+  const positionsMapRef = useRef<Record<string, { x: number; y: number }>>({});
+
+  const { nodes: initialNodes, edges: initialEdges, positions: initialPositions } =
+    buildWorkflowFlow(workflow, positionsMapRef.current);
+
+  positionsMapRef.current = initialPositions;
 
   const [nodes, setNodes, internalNodesChange] =
     useNodesState<WorkflowStepNodeData>(initialNodes);
@@ -94,12 +108,54 @@ function WorkflowCanvasInner({
     useEdgesState(initialEdges);
 
   // =========================================================
-  // Sync when workflow or executingStepId changes
+  // Explicit Auto Layout handler
+  // =========================================================
+
+  const handleAutoLayout = useCallback(() => {
+    const orderedSteps = [...(workflow.steps ?? [])].sort(
+      (a, b) => a.stepOrder - b.stepOrder
+    );
+
+    const freshPositions: Record<string, { x: number; y: number }> = {};
+    orderedSteps.forEach((step, index) => {
+      freshPositions[step.id] = {
+        x: START_X + index * HORIZONTAL_SPACING,
+        y: START_Y,
+      };
+    });
+
+    positionsMapRef.current = freshPositions;
+
+    const { nodes: newNodes, edges: newEdges } = buildWorkflowFlow(
+      workflow,
+      freshPositions
+    );
+
+    setNodes(newNodes);
+    setEdges(newEdges);
+
+    setTimeout(() => {
+      fitView({ padding: 0.25, duration: 400 });
+    }, 50);
+  }, [workflow, fitView, setNodes, setEdges]);
+
+  // Expose autoLayout function to parent toolbar if requested
+  useEffect(() => {
+    if (onAutoLayoutRef) {
+      onAutoLayoutRef(handleAutoLayout);
+    }
+  }, [handleAutoLayout, onAutoLayoutRef]);
+
+  // =========================================================
+  // Sync workflow data updates while strictly preserving positions
   // =========================================================
 
   useEffect(() => {
-    const { nodes: nextNodes, edges: nextEdges } =
-      buildWorkflowFlow(workflow);
+    // Build next nodes while keeping existing dragged coordinates intact
+    const { nodes: nextNodes, edges: nextEdges, positions: updatedPositions } =
+      buildWorkflowFlow(workflow, positionsMapRef.current);
+
+    positionsMapRef.current = updatedPositions;
 
     // Apply active execution states if executingStepId is provided
     const updatedNodes = nextNodes.map((n) => {
@@ -117,7 +173,10 @@ function WorkflowCanvasInner({
     const updatedEdges = nextEdges.map((e) => ({
       ...e,
       type: "animatedEdge",
-      animated: Boolean(executingStepId && (e.source === executingStepId || e.target === executingStepId)),
+      animated: Boolean(
+        executingStepId &&
+          (e.source === executingStepId || e.target === executingStepId)
+      ),
     }));
 
     setNodes(updatedNodes);
@@ -125,14 +184,34 @@ function WorkflowCanvasInner({
   }, [workflow, executingStepId, setNodes, setEdges]);
 
   // =========================================================
-  // Node drag
+  // Node Drag Handlers (Instant Position Recording)
   // =========================================================
+
+  const handleNodesChange = useCallback(
+    (changes: NodeChange[]) => {
+      // Record any position change directly into our persistent coordinates map
+      changes.forEach((change) => {
+        if (change.type === "position" && change.position) {
+          positionsMapRef.current[change.id] = { ...change.position };
+        }
+      });
+
+      internalNodesChange(changes);
+      onNodesChange?.(changes);
+    },
+    [internalNodesChange, onNodesChange]
+  );
 
   const handleNodeDragStop = useCallback(
     (
       event: React.MouseEvent,
       node: Node<WorkflowStepNodeData>
     ) => {
+      // Permanently lock dropped coordinates in memory
+      if (node?.position) {
+        positionsMapRef.current[node.id] = { ...node.position };
+      }
+
       onNodeDragStop?.(event, node, nodes);
     },
     [onNodeDragStop, nodes]
@@ -151,18 +230,6 @@ function WorkflowCanvasInner({
       onConnect?.(connection);
     },
     [setEdges, onConnect]
-  );
-
-  // =========================================================
-  // Node changes
-  // =========================================================
-
-  const handleNodesChange = useCallback(
-    (changes: NodeChange[]) => {
-      internalNodesChange(changes);
-      onNodesChange?.(changes);
-    },
-    [internalNodesChange, onNodesChange]
   );
 
   // =========================================================
@@ -198,18 +265,20 @@ function WorkflowCanvasInner({
       fitView
       fitViewOptions={{
         padding: 0.25,
-        duration: 200,
+        duration: 300,
       }}
+      minZoom={0.2}
+      maxZoom={2}
       attributionPosition="bottom-left"
-      className="bg-slate-50/60"
+      className="bg-dark-950"
     >
-      <Background variant={BackgroundVariant.Dots} gap={24} size={1.5} color="#cbd5e1" />
-      <Controls className="!bg-white !border-slate-200 !shadow-sm !rounded-xl overflow-hidden" />
+      <Background variant={BackgroundVariant.Dots} gap={28} size={1.5} color="#1e293b" />
+      <Controls className="!bg-dark-900 !border-white/[0.08] !shadow-card !rounded-xl overflow-hidden" />
       <MiniMap
-        nodeColor="#3457ff"
-        maskColor="rgba(248, 250, 252, 0.75)"
-        style={{ width: 150, height: 100 }}
-        className="!bg-white !border-slate-200 !rounded-xl !shadow-sm overflow-hidden"
+        nodeColor="#3b82f6"
+        maskColor="rgba(6, 9, 14, 0.85)"
+        style={{ width: 140, height: 90 }}
+        className="!bg-dark-900 !border-white/[0.08] !rounded-xl !shadow-card overflow-hidden"
       />
     </ReactFlow>
   );
@@ -226,3 +295,4 @@ export function WorkflowCanvas(props: WorkflowCanvasProps) {
     </ReactFlowProvider>
   );
 }
+export default WorkflowCanvas;

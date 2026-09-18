@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
 import { WorkflowStepType } from "@/types/workflow";
+import { Zap, Sparkles, Mail, Clock, Globe, X, Plus } from "lucide-react";
 
 // =========================================================
 // Step type options
@@ -11,6 +11,7 @@ import { WorkflowStepType } from "@/types/workflow";
 const STEP_TYPE_OPTIONS: {
   value: WorkflowStepType;
   label: string;
+  icon: typeof Zap;
   activeBg: string;
   activeText: string;
   activeBorder: string;
@@ -18,37 +19,42 @@ const STEP_TYPE_OPTIONS: {
   {
     value: "TRIGGER",
     label: "Trigger",
+    icon: Zap,
     activeBg: "bg-emerald-50",
     activeText: "text-emerald-700",
-    activeBorder: "border-emerald-400",
+    activeBorder: "border-emerald-300 ring-2 ring-emerald-500/20",
   },
   {
     value: "AI",
-    label: "AI",
+    label: "Gemini AI",
+    icon: Sparkles,
     activeBg: "bg-purple-50",
     activeText: "text-purple-700",
-    activeBorder: "border-purple-400",
+    activeBorder: "border-purple-300 ring-2 ring-purple-500/20",
   },
   {
     value: "EMAIL",
-    label: "Email",
+    label: "SMTP Email",
+    icon: Mail,
     activeBg: "bg-blue-50",
     activeText: "text-blue-700",
-    activeBorder: "border-blue-400",
+    activeBorder: "border-blue-300 ring-2 ring-blue-500/20",
   },
   {
     value: "DELAY",
-    label: "Delay",
-    activeBg: "bg-orange-50",
-    activeText: "text-orange-700",
-    activeBorder: "border-orange-400",
+    label: "Delay Timer",
+    icon: Clock,
+    activeBg: "bg-amber-50",
+    activeText: "text-amber-700",
+    activeBorder: "border-amber-300 ring-2 ring-amber-500/20",
   },
   {
     value: "WEBHOOK",
     label: "Webhook",
+    icon: Globe,
     activeBg: "bg-pink-50",
     activeText: "text-pink-700",
-    activeBorder: "border-pink-400",
+    activeBorder: "border-pink-300 ring-2 ring-pink-500/20",
   },
 ];
 
@@ -112,42 +118,52 @@ export function AddStepDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-      <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-6 shadow-lg">
-        <div className="mb-5">
-          <h2 className="text-base font-semibold text-gray-900">
-            Add Step
-          </h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4 backdrop-blur-sm animate-fade-in">
+      <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 sm:p-7 shadow-2xl animate-scale-in">
+        <div className="mb-5 flex items-start justify-between">
+          <div>
+            <h2 className="text-base font-extrabold text-slate-900">
+              Add Workflow Step
+            </h2>
 
-          <p className="mt-1 text-sm text-gray-500">
-            Choose a step type and give it a name.
-          </p>
+            <p className="mt-1 text-xs text-slate-500">
+              Select a step type and give your new pipeline node a name.
+            </p>
+          </div>
+
+          <button
+            onClick={handleCancel}
+            className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
 
         <div className="flex flex-col gap-4">
           {/* Step Type */}
-
           <div>
-            <p className="mb-2 text-sm font-medium text-gray-700">
-              Type
+            <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">
+              Step Type
             </p>
 
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {STEP_TYPE_OPTIONS.map((option) => {
                 const active = type === option.value;
+                const Icon = option.icon;
 
                 return (
                   <button
                     key={option.value}
                     type="button"
                     onClick={() => setType(option.value)}
-                    className={`rounded-lg border px-3 py-2.5 text-xs font-medium transition-colors ${
+                    className={`flex flex-col items-center gap-1.5 rounded-xl border p-3 text-xs font-semibold transition-all ${
                       active
                         ? `${option.activeBg} ${option.activeText} ${option.activeBorder}`
-                        : "border-gray-200 text-gray-500 hover:bg-gray-50"
+                        : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:border-slate-300 hover:text-slate-900"
                     }`}
                   >
-                    {option.label}
+                    <Icon className="h-4 w-4" />
+                    <span>{option.label}</span>
                   </button>
                 );
               })}
@@ -155,11 +171,10 @@ export function AddStepDialog({
           </div>
 
           {/* Step Name */}
-
           <div className="flex flex-col gap-1.5">
             <label
               htmlFor="step-name"
-              className="text-sm font-medium text-gray-700"
+              className="text-xs font-bold uppercase tracking-wider text-slate-500"
             >
               Step Name
             </label>
@@ -176,28 +191,27 @@ export function AddStepDialog({
                   setNameError(null);
                 }
               }}
-              className={`rounded-lg border px-3.5 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 ${
+              className={`rounded-xl border px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 bg-white shadow-sm outline-none transition-all focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 ${
                 nameError
-                  ? "border-red-400"
-                  : "border-gray-300"
+                  ? "border-rose-300 ring-4 ring-rose-500/10"
+                  : "border-slate-200 hover:border-slate-300"
               }`}
             />
 
             {nameError && (
-              <p className="text-xs text-red-500">
-                {nameError}
+              <p className="text-xs text-rose-600 font-medium">
+                • {nameError}
               </p>
             )}
           </div>
         </div>
 
         {/* Footer */}
-
-        <div className="mt-6 flex gap-2">
+        <div className="mt-6 flex gap-2.5 pt-4 border-t border-slate-100">
           <button
             type="button"
             onClick={handleCancel}
-            className="flex-1 rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50"
+            className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-colors shadow-sm active:scale-[0.98]"
           >
             Cancel
           </button>
@@ -205,9 +219,10 @@ export function AddStepDialog({
           <button
             type="button"
             onClick={handleCreate}
-            className="flex-1 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-700"
+            className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-all hover:bg-blue-700 active:scale-[0.98]"
           >
-            Create Step
+            <Plus className="h-4 w-4" />
+            <span>Create Step</span>
           </button>
         </div>
       </div>

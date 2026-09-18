@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ReactNode } from "react";
-import { Workflow, Zap, Sparkles, Mail, Globe, ArrowRight } from "lucide-react";
+import { Workflow, Zap, Sparkles, Mail, Globe, ArrowRight, ShieldCheck, CheckCircle2 } from "lucide-react";
 
 interface AuthLayoutProps {
   title: string;
@@ -30,25 +30,25 @@ export function AuthLayout({
   const isRegister = pageType === "register";
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center bg-slate-50/70 bg-grid-pattern px-4 py-8 sm:py-12 overflow-hidden selection:bg-brand-500 selection:text-white">
-      {/* Subtle Ambient Radial Gradients */}
-      <div className="pointer-events-none absolute top-1/4 -left-32 h-[450px] w-[450px] rounded-full bg-brand-500/10 blur-[100px]" />
-      <div className="pointer-events-none absolute bottom-1/4 -right-32 h-[450px] w-[450px] rounded-full bg-indigo-500/10 blur-[100px]" />
+    <div className="relative flex min-h-screen items-center justify-center bg-dark-950 bg-grid-pattern px-4 py-8 sm:py-12 overflow-hidden selection:bg-blue-600 selection:text-white">
+      {/* Ambient background glow orbs */}
+      <div className="pointer-events-none absolute top-1/4 -left-32 h-[500px] w-[500px] rounded-full bg-blue-600/[0.08] blur-[120px]" />
+      <div className="pointer-events-none absolute bottom-1/4 -right-32 h-[500px] w-[500px] rounded-full bg-indigo-600/[0.08] blur-[120px]" />
 
       <div className="relative z-10 mx-auto flex w-full max-w-5xl flex-col items-center justify-center lg:flex-row lg:items-center lg:justify-between lg:gap-12 xl:gap-16">
         
         {/* Left Side: Refined Integrated FlowPilot Workflow Visual (Desktop only) */}
-        <div className={`hidden lg:flex flex-col gap-6 w-[360px] xl:w-[400px] shrink-0 ${isRegister ? "opacity-90" : "opacity-75"} transition-opacity duration-300`}>
-          <div className="flex flex-col gap-2">
-            <div className="inline-flex items-center gap-2 rounded-full bg-brand-50 px-3 py-1 text-[11px] font-bold text-brand-700 border border-brand-100/80 w-fit">
-              <span className="flex h-2 w-2 rounded-full bg-brand-600 animate-pulse" />
-              <span>WORKFLOW AUTOMATION</span>
+        <div className={`hidden lg:flex flex-col gap-6 w-[380px] xl:w-[420px] shrink-0 ${isRegister ? "opacity-95" : "opacity-90"} transition-opacity duration-300`}>
+          <div className="flex flex-col gap-2.5">
+            <div className="inline-flex items-center gap-2 rounded-full bg-blue-950/60 px-3 py-1 text-[11px] font-bold text-blue-400 border border-blue-500/30 w-fit shadow-[0_0_12px_-2px_rgba(59,130,246,0.3)]">
+              <span className="flex h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+              <span>WORKFLOW AUTOMATION ENGINE</span>
             </div>
-            <h2 className="text-xl font-extrabold tracking-tight text-slate-900 leading-snug">
+            <h2 className="text-2xl font-extrabold tracking-tight text-white leading-snug">
               Orchestrate Intelligent Pipelines End-to-End
             </h2>
-            <p className="text-xs text-slate-500 leading-relaxed">
-              Connect triggers, AI steps, email dispatchers, and webhooks in real time.
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Connect triggers, Gemini AI resolution, SMTP email dispatchers, and custom webhooks with real-time telemetry.
             </p>
           </div>
 
@@ -62,13 +62,13 @@ export function AuthLayout({
                 x2="0"
                 y2="100%"
                 stroke="currentColor"
-                className="text-slate-200"
+                className="text-slate-800"
                 strokeWidth="2"
                 strokeDasharray="4 4"
               />
               <circle
                 r="3"
-                className="fill-brand-600 animate-pulse"
+                className="fill-blue-500 animate-pulse shadow-brand-glow"
                 style={{
                   cx: "0",
                   cy: "0",
@@ -78,62 +78,62 @@ export function AuthLayout({
             </svg>
 
             {/* Step 1: Trigger */}
-            <div className="relative z-10 flex items-center gap-3.5 rounded-2xl border border-slate-200/80 bg-white/95 p-3.5 shadow-subtle backdrop-blur-md transition-all hover:border-emerald-300 hover:shadow-md">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 font-bold border border-emerald-100">
+            <div className="relative z-10 flex items-center gap-3.5 rounded-2xl border border-white/[0.08] bg-dark-900/90 p-3.5 shadow-card backdrop-blur-xl transition-all hover:border-emerald-500/40 hover:shadow-[0_0_20px_-3px_rgba(16,185,129,0.15)]">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-950/60 text-emerald-400 font-bold border border-emerald-500/30 shadow-[0_0_12px_-2px_rgba(16,185,129,0.2)]">
                 <Zap className="h-5 w-5" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">Trigger</span>
-                  <span className="text-[10px] font-mono font-medium text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">Active</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Trigger</span>
+                  <span className="text-[10px] font-mono font-medium text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-500/30">Active</span>
                 </div>
-                <p className="text-xs font-bold text-slate-900 truncate">Webhook Event</p>
-                <p className="text-[11px] text-slate-400 truncate">HTTP POST Payload Received</p>
+                <p className="text-xs font-bold text-slate-100 truncate">Webhook Event</p>
+                <p className="text-[11px] text-slate-400 truncate font-mono">POST /api/webhooks/intake</p>
               </div>
             </div>
 
             {/* Step 2: AI Step */}
-            <div className="relative z-10 flex items-center gap-3.5 rounded-2xl border border-slate-200/80 bg-white/95 p-3.5 shadow-subtle backdrop-blur-md transition-all hover:border-purple-300 hover:shadow-md">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-purple-50 text-purple-600 font-bold border border-purple-100">
+            <div className="relative z-10 flex items-center gap-3.5 rounded-2xl border border-white/[0.08] bg-dark-900/90 p-3.5 shadow-card backdrop-blur-xl transition-all hover:border-purple-500/40 hover:shadow-[0_0_20px_-3px_rgba(168,85,247,0.15)]">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-purple-950/60 text-purple-400 font-bold border border-purple-500/30 shadow-[0_0_12px_-2px_rgba(168,85,247,0.2)]">
                 <Sparkles className="h-5 w-5" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-purple-600">AI Step</span>
-                  <span className="text-[10px] font-mono text-slate-400">Gemini 2.5</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-purple-400">AI Step</span>
+                  <span className="text-[10px] font-mono text-slate-400 bg-dark-800 px-1.5 py-0.5 rounded border border-white/[0.06]">Gemini 2.5</span>
                 </div>
-                <p className="text-xs font-bold text-slate-900 truncate">Context Resolution</p>
-                <p className="text-[11px] text-slate-400 truncate">Extracted Intent & Params</p>
+                <p className="text-xs font-bold text-slate-100 truncate">Context Resolution</p>
+                <p className="text-[11px] text-slate-400 truncate">Dynamic payload processing</p>
               </div>
             </div>
 
             {/* Step 3: Email */}
-            <div className="relative z-10 flex items-center gap-3.5 rounded-2xl border border-slate-200/80 bg-white/95 p-3.5 shadow-subtle backdrop-blur-md transition-all hover:border-blue-300 hover:shadow-md">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 font-bold border border-blue-100">
+            <div className="relative z-10 flex items-center gap-3.5 rounded-2xl border border-white/[0.08] bg-dark-900/90 p-3.5 shadow-card backdrop-blur-xl transition-all hover:border-blue-500/40 hover:shadow-[0_0_20px_-3px_rgba(59,130,246,0.15)]">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-950/60 text-blue-400 font-bold border border-blue-500/30 shadow-[0_0_12px_-2px_rgba(59,130,246,0.2)]">
                 <Mail className="h-5 w-5" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600">Email</span>
-                  <span className="text-[10px] font-mono text-slate-400">SMTP Active</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-blue-400">Email</span>
+                  <span className="text-[10px] font-mono text-slate-400 bg-dark-800 px-1.5 py-0.5 rounded border border-white/[0.06]">SMTP Dispatch</span>
                 </div>
-                <p className="text-xs font-bold text-slate-900 truncate">Notification Dispatch</p>
-                <p className="text-[11px] text-slate-400 truncate">Sent to stakeholder queue</p>
+                <p className="text-xs font-bold text-slate-100 truncate">Notification Queue</p>
+                <p className="text-[11px] text-slate-400 truncate font-mono">status: 250 OK queued</p>
               </div>
             </div>
 
             {/* Step 4: Webhook Sync */}
-            <div className="relative z-10 flex items-center gap-3.5 rounded-2xl border border-slate-200/80 bg-white/95 p-3.5 shadow-subtle backdrop-blur-md transition-all hover:border-pink-300 hover:shadow-md">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-pink-50 text-pink-600 font-bold border border-pink-100">
+            <div className="relative z-10 flex items-center gap-3.5 rounded-2xl border border-white/[0.08] bg-dark-900/90 p-3.5 shadow-card backdrop-blur-xl transition-all hover:border-pink-500/40 hover:shadow-[0_0_20px_-3px_rgba(236,72,153,0.15)]">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-pink-950/60 text-pink-400 font-bold border border-pink-500/30 shadow-[0_0_12px_-2px_rgba(236,72,153,0.2)]">
                 <Globe className="h-5 w-5" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-pink-600">Webhook</span>
-                  <span className="text-[10px] font-mono text-slate-400">200 OK</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-pink-400">Webhook</span>
+                  <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-500/30">200 OK</span>
                 </div>
-                <p className="text-xs font-bold text-slate-900 truncate">System Synchronized</p>
-                <p className="text-[11px] text-slate-400 truncate">State updated across workspace</p>
+                <p className="text-xs font-bold text-slate-100 truncate">System Sync</p>
+                <p className="text-[11px] text-slate-400 truncate">Payload broadcast complete</p>
               </div>
             </div>
           </div>
@@ -145,44 +145,44 @@ export function AuthLayout({
           <div className="mb-6 text-center">
             <Link
               href="/"
-              className="group inline-flex items-center justify-center gap-2.5 rounded-2xl p-1.5 transition-all duration-200 hover:scale-[1.02] hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
+              className="group inline-flex items-center justify-center gap-2.5 rounded-2xl p-1.5 transition-all duration-200 hover:scale-[1.02] hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
               title="Return to FlowPilot Home"
               aria-label="FlowPilot Home"
             >
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-600 text-white shadow-brand-glow transition-all duration-200 group-hover:bg-brand-700 group-hover:shadow-lg group-hover:shadow-brand-600/30">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-brand-glow transition-all duration-200 group-hover:shadow-brand-glow-lg">
                 <Workflow className="h-6 w-6" />
               </div>
-              <span className="text-2xl font-black tracking-tight text-slate-900 transition-colors group-hover:text-brand-600">
+              <span className="text-2xl font-black tracking-tight text-white transition-colors group-hover:text-blue-400">
                 FlowPilot
               </span>
             </Link>
 
             {badgeText && (
-              <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-brand-50/90 px-3 py-0.5 text-[11px] font-bold text-brand-700 border border-brand-100 shadow-subtle mx-auto">
+              <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-blue-950/60 px-3 py-0.5 text-[11px] font-bold text-blue-400 border border-blue-500/30 shadow-[0_0_12px_-2px_rgba(59,130,246,0.3)] mx-auto">
                 {badgeIcon}
                 <span>{badgeText}</span>
               </div>
             )}
 
-            <h1 className="mt-3.5 text-2xl font-extrabold tracking-tight text-slate-900">
+            <h1 className="mt-3.5 text-2xl font-extrabold tracking-tight text-white">
               {title}
             </h1>
 
-            <p className="mt-1 text-xs text-slate-500 leading-relaxed max-w-xs mx-auto">
+            <p className="mt-1 text-xs text-slate-400 leading-relaxed max-w-xs mx-auto">
               {subtitle}
             </p>
           </div>
 
           {/* Compact Auth Card Surface */}
-          <div className="rounded-2xl sm:rounded-3xl border border-slate-200/90 bg-white p-6 sm:p-8 shadow-card transition-all">
+          <div className="rounded-3xl border border-white/[0.08] bg-dark-900/90 p-6 sm:p-8 shadow-card backdrop-blur-xl transition-all">
             {children}
 
             {/* Footer Link Navigation */}
-            <div className="mt-6 pt-5 border-t border-slate-100 text-center text-xs text-slate-500">
+            <div className="mt-6 pt-5 border-t border-white/[0.08] text-center text-xs text-slate-400">
               {bottomQuestion}{" "}
               <Link
                 href={bottomLinkHref}
-                className="font-bold text-brand-600 hover:text-brand-700 underline-offset-4 hover:underline transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 rounded"
+                className="font-bold text-blue-400 hover:text-blue-300 underline-offset-4 hover:underline transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
               >
                 {bottomLinkText}
               </Link>

@@ -30,12 +30,18 @@ export default function LoginPage() {
     setServerError(null);
 
     try {
-      await api.post("/auth/login", values);
+      const response = await api.post("/auth/login", values);
+      const data = response.data?.data;
 
-      // Small delay gives the browser time to process the cookie
-      setTimeout(() => {
-        router.replace("/dashboard/workflows");
-      }, 100);
+      if (data?.accessToken && typeof window !== "undefined") {
+        localStorage.setItem("flowpilot_token", data.accessToken);
+      }
+      if (data?.user && typeof window !== "undefined") {
+        localStorage.setItem("flowpilot_user", JSON.stringify(data.user));
+      }
+
+      // Smooth transition to dashboard
+      router.replace("/dashboard/workflows");
     } catch (error) {
       if (axios.isAxiosError(error)) {
         setServerError(
@@ -51,17 +57,17 @@ export default function LoginPage() {
   return (
     <AuthLayout
       title="Welcome back"
-      subtitle="Sign in to continue managing your workflows."
+      subtitle="Sign in to continue managing your intelligent workflows."
       badgeText="Secure SaaS Workspace"
-      badgeIcon={<ShieldCheck className="h-3.5 w-3.5 text-brand-600" />}
+      badgeIcon={<ShieldCheck className="h-3.5 w-3.5 text-blue-400" />}
       bottomQuestion="Don't have an account?"
       bottomLinkText="Create one"
       bottomLinkHref="/register"
       pageType="login"
     >
       {serverError && (
-        <div className="mb-5 flex items-start gap-2.5 rounded-2xl border border-rose-200/90 bg-rose-50/90 p-3.5 text-xs text-rose-700 animate-fade-in shadow-sm">
-          <AlertCircle className="h-4 w-4 shrink-0 text-rose-600 mt-0.5" />
+        <div className="mb-5 flex items-start gap-2.5 rounded-2xl border border-rose-500/30 bg-rose-950/60 p-3.5 text-xs text-rose-300 animate-fade-in shadow-sm">
+          <AlertCircle className="h-4 w-4 shrink-0 text-rose-400 mt-0.5" />
           <p className="font-semibold leading-relaxed">{serverError}</p>
         </div>
       )}
@@ -73,7 +79,7 @@ export default function LoginPage() {
             type="email"
             label="Email address"
             placeholder="you@company.com"
-            icon={<Mail className="h-4 w-4 text-slate-400" />}
+            icon={<Mail className="h-4 w-4 text-slate-500" />}
             error={errors.email?.message}
             {...register("email")}
           />
@@ -85,12 +91,12 @@ export default function LoginPage() {
             type={showPassword ? "text" : "password"}
             label="Password"
             placeholder="••••••••"
-            icon={<Lock className="h-4 w-4 text-slate-400" />}
+            icon={<Lock className="h-4 w-4 text-slate-500" />}
             rightElement={
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="p-1 text-slate-400 hover:text-slate-600 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500 rounded"
+                className="p-1 text-slate-400 hover:text-slate-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
                 aria-label={showPassword ? "Hide password" : "Show password"}
                 tabIndex={0}
               >
@@ -109,7 +115,7 @@ export default function LoginPage() {
         <Button
           type="submit"
           isLoading={isSubmitting}
-          className="w-full mt-2 py-3 text-xs font-bold uppercase tracking-wider shadow-brand-glow hover:shadow-lg hover:shadow-brand-500/25 active:scale-[0.99] transition-all"
+          className="w-full mt-2 py-3 text-xs font-bold uppercase tracking-wider"
         >
           <span>Sign in</span>
           <ArrowRight className="h-4 w-4 ml-1" />

@@ -44,7 +44,7 @@ export function RunWorkflowButton({
     <button
       onClick={handleRun}
       disabled={isRunning}
-      className={`inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-all duration-150 hover:bg-brand-700 hover:shadow-brand-glow active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-brand-300 disabled:shadow-none ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-2.5 text-xs font-bold text-white shadow-brand-glow transition-all duration-150 hover:from-blue-500 hover:to-indigo-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 border border-blue-400/20 ${className}`}
     >
       {isRunning ? (
         <>
@@ -53,11 +53,10 @@ export function RunWorkflowButton({
         </>
       ) : (
         <>
-          <Play className="h-4 w-4 fill-current" />
+          <Play className="h-3.5 w-3.5 fill-current" />
           <span>Execute Workflow</span>
         </>
       )}
     </button>
   );
 }
-

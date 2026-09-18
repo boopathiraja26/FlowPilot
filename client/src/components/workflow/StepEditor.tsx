@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { WorkflowStep, WorkflowStepType } from "@/types/workflow";
+import { Save, Trash2, Edit3, Code, Sparkles, Mail, Clock, Globe, Zap } from "lucide-react";
 
 export interface StepEditorValues {
   name: string;
@@ -280,8 +281,7 @@ export function StepEditor({
         ...config,
       };
     } catch {
-      // The Save button is disabled when config is invalid,
-      // so this should normally never execute.
+      // The Save button is disabled when config is invalid
     }
 
     config.description = form.description;
@@ -299,129 +299,153 @@ export function StepEditor({
     Boolean(configError) ||
     !form.name.trim();
 
-  return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-6">
-      {/* Header */}
-      <div className="mb-5 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-gray-900">
-          Edit Step
-        </h3>
+  const inputClasses =
+    "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50 disabled:text-slate-400";
 
-        <span className="rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-600">
-          Step {step.stepOrder}
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-card">
+      {/* Header */}
+      <div className="mb-4 flex items-center justify-between pb-3 border-b border-slate-100">
+        <div className="flex items-center gap-2">
+          <Edit3 className="h-4 w-4 text-blue-600" />
+          <h3 className="text-sm font-bold text-slate-900">
+            Step Configuration
+          </h3>
+        </div>
+
+        <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-[10px] font-bold text-blue-700 border border-blue-200">
+          Node #{step.stepOrder}
         </span>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-3.5">
         {/* Step Name */}
-        <input
-          value={form.name}
-          disabled={isSaving}
-          onChange={(e) => updateField("name", e.target.value)}
-          placeholder="Step Name"
-          className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
-        />
+        <div>
+          <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">
+            Step Name
+          </label>
+          <input
+            value={form.name}
+            disabled={isSaving}
+            onChange={(e) => updateField("name", e.target.value)}
+            placeholder="Step Name"
+            className={inputClasses}
+          />
+        </div>
 
         {/* Step Type */}
-        <select
-          value={form.type}
-          disabled={isSaving}
-          onChange={(e) =>
-            updateField(
-              "type",
-              e.target.value as WorkflowStepType
-            )
-          }
-          className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
-        >
-          {STEP_TYPE_OPTIONS.map((type) => (
-            <option key={type} value={type}>
-              {type}
-            </option>
-          ))}
-        </select>
+        <div>
+          <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">
+            Node Type
+          </label>
+          <select
+            value={form.type}
+            disabled={isSaving}
+            onChange={(e) =>
+              updateField(
+                "type",
+                e.target.value as WorkflowStepType
+              )
+            }
+            className={inputClasses}
+          >
+            {STEP_TYPE_OPTIONS.map((type) => (
+              <option key={type} value={type} className="bg-white text-slate-800">
+                {type}
+              </option>
+            ))}
+          </select>
+        </div>
 
         {/* Description */}
-        <textarea
-          value={form.description}
-          disabled={isSaving}
-          rows={3}
-          onChange={(e) =>
-            updateField("description", e.target.value)
-          }
-          placeholder="Description"
-          className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
-        />
+        <div>
+          <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">
+            Description
+          </label>
+          <textarea
+            value={form.description}
+            disabled={isSaving}
+            rows={2}
+            onChange={(e) =>
+              updateField("description", e.target.value)
+            }
+            placeholder="Step Purpose & Notes"
+            className={inputClasses}
+          />
+        </div>
 
         {/* AI */}
         {form.type === "AI" && (
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">
-              AI Prompt
-            </label>
+          <div className="rounded-xl border border-purple-200 bg-purple-50/50 p-3 space-y-2">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-purple-700">
+              <Sparkles className="h-3.5 w-3.5" />
+              <span>Gemini AI Prompt</span>
+            </div>
 
             <textarea
-              rows={5}
+              rows={4}
               value={form.prompt}
               disabled={isSaving}
               onChange={(e) =>
                 updateField("prompt", e.target.value)
               }
-              placeholder="AI Prompt"
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
+              placeholder="e.g. Generate a personalized welcome email for {{employee_name}} in {{department}}..."
+              className={inputClasses}
             />
           </div>
         )}
 
         {/* EMAIL */}
         {form.type === "EMAIL" && (
-          <div className="space-y-3">
-            <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">
-                Recipient
-              </label>
+          <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-3 space-y-3">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-blue-700">
+              <Mail className="h-3.5 w-3.5" />
+              <span>SMTP Email Dispatch</span>
+            </div>
 
+            <div>
+              <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                Recipient Email
+              </label>
               <input
                 value={form.emailTo}
                 disabled={isSaving}
                 onChange={(e) =>
                   updateField("emailTo", e.target.value)
                 }
-                placeholder="Recipient"
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
+                placeholder="recipient@domain.com or {{employee_email}}"
+                className={inputClasses}
               />
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">
+              <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">
                 Subject
               </label>
-
               <input
                 value={form.emailSubject}
                 disabled={isSaving}
                 onChange={(e) =>
                   updateField("emailSubject", e.target.value)
                 }
-                placeholder="Subject"
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
+                placeholder="Welcome to {{company_name}}!"
+                className={inputClasses}
               />
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">
-                Email Body
+              <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                Email Body Template
               </label>
-
               <textarea
-                rows={5}
+                rows={4}
                 value={form.emailBody}
                 disabled={isSaving}
                 onChange={(e) =>
                   updateField("emailBody", e.target.value)
                 }
-                placeholder="Email Body"
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
+                placeholder="Email content or HTML..."
+                className={inputClasses}
               />
             </div>
           </div>
@@ -429,11 +453,15 @@ export function StepEditor({
 
         {/* DELAY */}
         {form.type === "DELAY" && (
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">
-              Delay (milliseconds)
-            </label>
+          <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-3 space-y-2">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-amber-700">
+              <Clock className="h-3.5 w-3.5" />
+              <span>Execution Delay</span>
+            </div>
 
+            <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">
+              Wait Duration (milliseconds)
+            </label>
             <input
               type="number"
               value={form.delayMs}
@@ -444,35 +472,38 @@ export function StepEditor({
                   Number(e.target.value)
                 )
               }
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
+              className={inputClasses}
             />
           </div>
         )}
 
         {/* WEBHOOK */}
         {form.type === "WEBHOOK" && (
-          <div className="space-y-3">
+          <div className="rounded-xl border border-pink-200 bg-pink-50/50 p-3 space-y-3">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-pink-700">
+              <Globe className="h-3.5 w-3.5" />
+              <span>HTTP Webhook Dispatch</span>
+            </div>
+
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">
+              <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">
                 Webhook URL
               </label>
-
               <input
                 value={form.webhookUrl}
                 disabled={isSaving}
                 onChange={(e) =>
                   updateField("webhookUrl", e.target.value)
                 }
-                placeholder="Webhook URL"
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
+                placeholder="https://api.domain.com/webhook"
+                className={inputClasses}
               />
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">
+              <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">
                 HTTP Method
               </label>
-
               <select
                 value={form.webhookMethod}
                 disabled={isSaving}
@@ -482,7 +513,7 @@ export function StepEditor({
                     e.target.value
                   )
                 }
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
+                className={inputClasses}
               >
                 <option value="POST">POST</option>
                 <option value="GET">GET</option>
@@ -496,175 +527,85 @@ export function StepEditor({
 
         {/* TRIGGER */}
         {form.type === "TRIGGER" && (
-          <div className="space-y-3">
-            <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">
-                Trigger Type
-              </label>
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-3 space-y-2.5">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-700">
+              <Zap className="h-3.5 w-3.5" />
+              <span>Trigger Payload Schema</span>
+            </div>
 
+            <div className="grid grid-cols-2 gap-2">
               <input
-                value={form.triggerType}
+                value={form.employeeName}
                 disabled={isSaving}
-                onChange={(e) =>
-                  updateField(
-                    "triggerType",
-                    e.target.value
-                  )
-                }
-                placeholder="Trigger Type"
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
+                onChange={(e) => updateField("employeeName", e.target.value)}
+                placeholder="Employee Name"
+                className={inputClasses}
+              />
+              <input
+                value={form.employeeEmail}
+                disabled={isSaving}
+                onChange={(e) => updateField("employeeEmail", e.target.value)}
+                placeholder="Employee Email"
+                className={inputClasses}
               />
             </div>
 
-            <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">
-                Form ID
-              </label>
-
+            <div className="grid grid-cols-2 gap-2">
               <input
-                value={form.formId}
+                value={form.department}
                 disabled={isSaving}
-                onChange={(e) =>
-                  updateField("formId", e.target.value)
-                }
-                placeholder="Form ID"
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
+                onChange={(e) => updateField("department", e.target.value)}
+                placeholder="Department"
+                className={inputClasses}
+              />
+              <input
+                value={form.jobTitle}
+                disabled={isSaving}
+                onChange={(e) => updateField("jobTitle", e.target.value)}
+                placeholder="Job Title"
+                className={inputClasses}
               />
             </div>
 
-            <input
-              value={form.employeeName}
-              disabled={isSaving}
-              onChange={(e) =>
-                updateField("employeeName", e.target.value)
-              }
-              placeholder="Employee Name"
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
-            />
-
-            <input
-              value={form.employeeEmail}
-              disabled={isSaving}
-              onChange={(e) =>
-                updateField(
-                  "employeeEmail",
-                  e.target.value
-                )
-              }
-              placeholder="Employee Email"
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
-            />
-
-            <input
-              value={form.department}
-              disabled={isSaving}
-              onChange={(e) =>
-                updateField("department", e.target.value)
-              }
-              placeholder="Department"
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
-            />
-
-            <input
-              value={form.jobTitle}
-              disabled={isSaving}
-              onChange={(e) =>
-                updateField("jobTitle", e.target.value)
-              }
-              placeholder="Job Title"
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
-            />
-
-            <input
-              value={form.companyName}
-              disabled={isSaving}
-              onChange={(e) =>
-                updateField("companyName", e.target.value)
-              }
-              placeholder="Company Name"
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
-            />
-
-            <input
-              value={form.managerName}
-              disabled={isSaving}
-              onChange={(e) =>
-                updateField("managerName", e.target.value)
-              }
-              placeholder="Manager Name"
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
-            />
-
-            <input
-              value={form.managerEmail}
-              disabled={isSaving}
-              onChange={(e) =>
-                updateField(
-                  "managerEmail",
-                  e.target.value
-                )
-              }
-              placeholder="Manager Email"
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
-            />
-
-            <input
-              value={form.startDate}
-              disabled={isSaving}
-              onChange={(e) =>
-                updateField("startDate", e.target.value)
-              }
-              placeholder="Start Date"
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
-            />
-
-            <input
-              value={form.companyAddress}
-              disabled={isSaving}
-              onChange={(e) =>
-                updateField(
-                  "companyAddress",
-                  e.target.value
-                )
-              }
-              placeholder="Company Address"
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
-            />
-
-            <input
-              value={form.companyPhone}
-              disabled={isSaving}
-              onChange={(e) =>
-                updateField(
-                  "companyPhone",
-                  e.target.value
-                )
-              }
-              placeholder="Company Phone"
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
-            />
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                value={form.companyName}
+                disabled={isSaving}
+                onChange={(e) => updateField("companyName", e.target.value)}
+                placeholder="Company Name"
+                className={inputClasses}
+              />
+              <input
+                value={form.managerName}
+                disabled={isSaving}
+                onChange={(e) => updateField("managerName", e.target.value)}
+                placeholder="Manager Name"
+                className={inputClasses}
+              />
+            </div>
           </div>
         )}
 
         {/* Raw JSON configuration */}
-        <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">
-            Configuration JSON
-          </label>
+        <div className="pt-1">
+          <div className="flex items-center gap-1.5 mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+            <Code className="h-3 w-3 text-slate-400" />
+            <span>Raw JSON Config</span>
+          </div>
 
           <textarea
-            rows={8}
+            rows={5}
             spellCheck={false}
             value={form.configText}
             disabled={isSaving}
             onChange={(e) =>
               handleConfigChange(e.target.value)
             }
-            className="w-full rounded-lg border border-gray-200 px-3 py-2 font-mono text-xs outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
+            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 font-mono text-[11px] text-slate-700 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-100"
           />
 
           {configError && (
-            <p className="mt-1 text-xs text-red-500">
+            <p className="mt-1 text-xs text-rose-500 font-medium">
               {configError}
             </p>
           )}
@@ -672,23 +613,25 @@ export function StepEditor({
       </div>
 
       {/* Actions */}
-      <div className="mt-6 flex gap-2">
+      <div className="mt-5 flex gap-2 pt-3 border-t border-slate-100">
         <button
           type="button"
           onClick={handleSave}
           disabled={isSaveDisabled}
-          className="flex-1 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-sm transition-all hover:bg-blue-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {isSaving ? "Saving..." : "Save Changes"}
+          <Save className="h-3.5 w-3.5" />
+          <span>{isSaving ? "Saving..." : "Save Changes"}</span>
         </button>
 
         <button
           type="button"
           onClick={onDelete}
           disabled={isSaving}
-          className="rounded-lg border border-red-300 px-4 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-600 transition-all hover:bg-rose-100 hover:border-rose-300 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+          title="Delete this step"
         >
-          Delete
+          <Trash2 className="h-3.5 w-3.5" />
         </button>
       </div>
     </div>

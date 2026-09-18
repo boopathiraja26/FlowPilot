@@ -25,23 +25,23 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           <input
             ref={ref}
             id={id}
-            className={`w-full rounded-xl border px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 bg-white transition-all duration-200 outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 ${
+            className={`w-full rounded-xl border px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 bg-white shadow-sm transition-all duration-150 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 ${
               icon ? "pl-10" : ""
             } ${rightElement ? "pr-10" : ""} ${
               error
-                ? "border-rose-300 ring-4 ring-rose-500/10 focus:border-rose-500 focus:ring-rose-500/20"
-                : "border-slate-200/90 hover:border-slate-300"
+                ? "border-rose-300 ring-4 ring-rose-500/10 focus:border-rose-500 focus:ring-rose-500/20 text-rose-900"
+                : "border-slate-200 hover:border-slate-300"
             } ${className}`}
             {...props}
           />
           {rightElement && (
-            <div className="absolute right-3.5 flex items-center justify-center">
+            <div className="absolute right-3.5 flex items-center justify-center text-slate-400 hover:text-slate-600">
               {rightElement}
             </div>
           )}
         </div>
         {error && (
-          <p className="animate-fade-in text-xs font-medium text-rose-500 flex items-center gap-1 mt-0.5">
+          <p className="animate-fade-in text-xs font-semibold text-rose-600 flex items-center gap-1 mt-0.5">
             <span>•</span> {error}
           </p>
         )}
@@ -51,5 +51,3 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
 );
 
 Input.displayName = "Input";
-
-

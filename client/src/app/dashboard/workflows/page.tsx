@@ -28,8 +28,11 @@ export default function WorkflowsPage() {
         if (!isCancelled) {
           setWorkflows(response.data.data.workflows as Workflow[]);
         }
-      } catch (err) {
+      } catch (err: any) {
         if (!isCancelled) {
+          if (err?.response?.status === 401) {
+            return;
+          }
           setError("Couldn't load your workflows. Please try again.");
         }
       } finally {
@@ -71,11 +74,11 @@ export default function WorkflowsPage() {
     <DashboardShell>
       <div className="space-y-6">
         {/* Page Header */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 pb-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200 pb-5">
           <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-2xl font-extrabold tracking-tight text-slate-900">Workflows</h2>
-              <span className="rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-bold text-brand-700 border border-brand-100">
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">Workflows</h1>
+              <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-bold text-blue-700 border border-blue-200">
                 {workflows.length} Total
               </span>
             </div>
@@ -86,7 +89,7 @@ export default function WorkflowsPage() {
 
           <Link
             href="/dashboard/workflows/new"
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-all duration-150 hover:bg-brand-700 hover:shadow-brand-glow active:scale-[0.98]"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-all duration-150 hover:bg-blue-700 active:scale-[0.98]"
           >
             <Plus className="h-4 w-4" />
             <span>Create Workflow</span>
@@ -96,32 +99,32 @@ export default function WorkflowsPage() {
         {/* Dashboard Statistics Summary Cards */}
         {!isLoading && !error && workflows.length > 0 && (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 animate-fade-in">
-            <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-subtle flex items-center justify-between">
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm flex items-center justify-between">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Workflows</p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Total Workflows</p>
                 <p className="mt-1 text-2xl font-black text-slate-900">{workflows.length}</p>
               </div>
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600 border border-brand-100">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-600 border border-blue-100">
                 <GitFork className="h-5 w-5" />
               </div>
             </div>
 
-            <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-subtle flex items-center justify-between">
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm flex items-center justify-between">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Active Pipelines</p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Active Pipelines</p>
                 <p className="mt-1 text-2xl font-black text-emerald-600">{activeCount}</p>
               </div>
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100">
                 <CheckCircle2 className="h-5 w-5" />
               </div>
             </div>
 
-            <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-subtle flex items-center justify-between">
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm flex items-center justify-between">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Configured Steps</p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Total Configured Steps</p>
                 <p className="mt-1 text-2xl font-black text-purple-600">{totalSteps}</p>
               </div>
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-50 text-purple-600 border border-purple-100">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-purple-50 text-purple-600 border border-purple-100">
                 <Layers className="h-5 w-5" />
               </div>
             </div>
@@ -169,4 +172,4 @@ export default function WorkflowsPage() {
       </div>
     </DashboardShell>
   );
-}
+}
