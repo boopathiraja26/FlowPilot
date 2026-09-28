@@ -201,10 +201,26 @@ ${instructions}
       const rawUrl = typeof config.url === "string" ? config.url : "";
 
       if (!rawUrl) {
-        throw new Error("Webhook URL is required.");
+        throw new Error("Webhook URL is not configured. Please set a real URL in the step editor.");
       }
 
       const url = resolveTemplate(rawUrl, context);
+
+      // Reject placeholder / example hostnames — they will never resolve.
+      const PLACEHOLDER_HOSTS = ["api.example.com", "example.com", "www.example.com"];
+      try {
+        const parsed = new URL(url);
+        if (PLACEHOLDER_HOSTS.includes(parsed.hostname)) {
+          throw new Error(
+            `Webhook URL contains a placeholder hostname ("${parsed.hostname}"). ` +
+            "Please configure a real webhook URL in the step editor before executing."
+          );
+        }
+      } catch (err) {
+        // Re-throw our own config errors; convert URL parse failures to a clear message.
+        if ((err as Error).message.startsWith("Webhook URL contains a placeholder")) throw err;
+        throw new Error(`Webhook URL is invalid: "${url}". Please set a valid URL in the step editor.`);
+      }
 
       const method =
         typeof config.method === "string"
