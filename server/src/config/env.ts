@@ -47,7 +47,7 @@ export const env = {
 
   gemini: {
     apiKey: required("GEMINI_API_KEY"),
-    model: required("GEMINI_MODEL", "gemini-2.5-flash"),
+    model: required("GEMINI_MODEL", "gemini-3.6-flash"),
   },
 
   rateLimit: {

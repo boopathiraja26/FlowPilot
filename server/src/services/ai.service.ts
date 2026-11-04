@@ -2,6 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 import { Prisma, Workflow, WorkflowStep } from "@prisma/client";
 import prisma from "../lib/prisma";
 
+import { env } from "../config/env";
 import { ApiError } from "../middleware/errorHandler";
 import {
   GeneratedWorkflow,
@@ -13,15 +14,15 @@ import {
 // Client setup
 // =========================================================
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_MODEL = process.env.GEMINI_MODEL ?? "gemini-2.0-flash";
+const GEMINI_API_KEY = env.gemini.apiKey;
+const GEMINI_MODEL = env.gemini.model;
 
 if (!GEMINI_API_KEY) {
   // eslint-disable-next-line no-console
   console.warn("[ai.service] Missing GEMINI_API_KEY environment variable");
 }
 
-const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY ?? "" });
+const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 
 // =========================================================
 // Prompt construction
