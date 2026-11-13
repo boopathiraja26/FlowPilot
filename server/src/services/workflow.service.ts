@@ -1,8 +1,9 @@
-import { Workflow, WorkflowStep } from "@prisma/client";
+import { Prisma, Workflow, WorkflowStep } from "@prisma/client";
 
 import { ApiError } from "../middleware/errorHandler";
 import { CreateWorkflowInput, UpdateWorkflowInput } from "../validators/workflow.validation";
 import prisma from "../lib/prisma";
+import { sanitizeDuplicatedConfig } from "../utils/workflowCopy";
 
 // =========================================================
 // Types
@@ -118,6 +119,38 @@ export async function updateWorkflow(
   });
 
   return updatedWorkflow;
+}
+
+export async function duplicateWorkflow(
+  userId: string,
+  workflowId: string
+): Promise<WorkflowWithSteps> {
+  const source = await findOwnedWorkflowOrThrow(workflowId, userId);
+
+  return prisma.workflow.create({
+    data: {
+      title: `${source.title.slice(0, 93)} (Copy)`,
+      description: source.description,
+      status: "DRAFT",
+      userId,
+      steps: {
+        create: source.steps.map((step) => ({
+          stepOrder: step.stepOrder,
+          type: step.type,
+          name: step.name,
+          config:
+            step.config === null
+              ? Prisma.JsonNull
+              : (sanitizeDuplicatedConfig(step.config) as Prisma.InputJsonValue),
+        })),
+      },
+    },
+    include: {
+      steps: {
+        orderBy: { stepOrder: "asc" },
+      },
+    },
+  });
 }
 
 // =========================================================

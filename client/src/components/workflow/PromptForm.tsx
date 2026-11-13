@@ -13,7 +13,7 @@ const MAX_PROMPT_LENGTH = 1000;
 const PROMPT_TEMPLATES = [
   {
     label: "Employee Onboarding",
-    text: "Create an employee onboarding workflow that triggers on employee added, generates a personalized welcome message with Gemini AI, sends a welcome email via SMTP, waits 1 day, then syncs the HR portal via webhook.",
+    text: "Create an employee onboarding demo workflow that receives employee details as a trigger payload, uses Gemini AI to generate a personalized welcome message, then sends a welcome email via SMTP to the submitted employee email. Do not add a delay or external webhook.",
   },
   {
     label: "Lead Enrichment & Alert",
@@ -125,7 +125,7 @@ export function PromptForm({ onGenerate, isLoading }: PromptFormProps) {
         }}
         disabled={isLoading}
         rows={6}
-        placeholder="e.g. Create an employee onboarding workflow that triggers when a new teammate is added, generates a welcome message with Gemini AI, sends an SMTP welcome email, waits 1 day, then notifies the team portal via webhook."
+        placeholder="e.g. Create an employee onboarding workflow that receives a trigger payload, generates a welcome message with Gemini AI, then sends an SMTP email to the submitted employee address."
         className={`mt-2 w-full resize-none rounded-2xl border px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500 bg-dark-950/90 outline-none transition-all focus:border-purple-500 focus:ring-4 focus:ring-purple-500/15 disabled:cursor-not-allowed disabled:opacity-60 ${
           validationError ? "border-rose-500/50 ring-4 ring-rose-500/10" : "border-white/[0.08] hover:border-white/[0.15]"
         }`}

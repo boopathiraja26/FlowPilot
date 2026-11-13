@@ -2,8 +2,19 @@ import { Request, Response } from "express";
 
 import { asyncHandler } from "../middleware/asyncHandler";
 import { ApiError } from "../middleware/errorHandler";
-import { registerSchema, loginSchema } from "../validators/auth.validation";
-import { registerUser, loginUser } from "../services/auth.service";
+import {
+  changePasswordSchema,
+  loginSchema,
+  profileUpdateSchema,
+  registerSchema,
+} from "../validators/auth.validation";
+import {
+  changeUserPassword,
+  getUserProfile,
+  loginUser,
+  registerUser,
+  updateUserProfile,
+} from "../services/auth.service";
 import { jwtConfig } from "../config/jwt";
 import { env } from "../config/env";
 
@@ -99,3 +110,59 @@ export const logout = asyncHandler(async (_req: Request, res: Response) => {
     message: "Logged out successfully",
   });
 });
+
+export const getProfile = asyncHandler(
+  async (req: Request, res: Response) => {
+    if (!req.user?.id) {
+      throw new ApiError(401, "Authentication required");
+    }
+
+    const user = await getUserProfile(req.user.id);
+    res.status(200).json({ success: true, data: { user } });
+  }
+);
+
+export const updateProfile = asyncHandler(
+  async (req: Request, res: Response) => {
+    if (!req.user?.id) {
+      throw new ApiError(401, "Authentication required");
+    }
+
+    const parsed = profileUpdateSchema.safeParse(req.body);
+    if (!parsed.success) {
+      throw new ApiError(
+        400,
+        "Validation failed",
+        parsed.error.flatten().fieldErrors
+      );
+    }
+
+    const user = await updateUserProfile(req.user.id, parsed.data);
+    res.status(200).json({ success: true, data: { user } });
+  }
+);
+
+export const changePassword = asyncHandler(
+  async (req: Request, res: Response) => {
+    if (!req.user?.id) {
+      throw new ApiError(401, "Authentication required");
+    }
+
+    const parsed = changePasswordSchema.safeParse(req.body);
+    if (!parsed.success) {
+      throw new ApiError(
+        400,
+        "Validation failed",
+        parsed.error.flatten().fieldErrors
+      );
+    }
+
+    const { accessToken } = await changeUserPassword(req.user.id, parsed.data);
+    setAccessTokenCookie(res, accessToken);
+    res.status(200).json({
+      success: true,
+      message: "Password updated successfully",
+      data: { accessToken },
+    });
+  }
+);

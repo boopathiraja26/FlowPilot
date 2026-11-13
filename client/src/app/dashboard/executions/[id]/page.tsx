@@ -24,8 +24,8 @@ function formatDateTime(isoDate: string | null): string {
   });
 }
 
-function formatDuration(startedAt: string, completedAt: string | null): string {
-  if (!completedAt) return "--";
+function formatDuration(startedAt: string | null, completedAt: string | null): string {
+  if (!startedAt || !completedAt) return "--";
 
   const durationMs = new Date(completedAt).getTime() - new Date(startedAt).getTime();
   if (durationMs < 0) return "--";
@@ -51,22 +51,32 @@ export default function ExecutionDetailPage() {
     if (!executionId) return;
 
     let isCancelled = false;
+    let hasLoadedExecution = false;
 
     async function fetchExecution() {
-      setIsLoading(true);
+      if (!hasLoadedExecution) setIsLoading(true);
       setError(null);
 
       try {
         const response = await api.get(`/executions/${executionId}`);
         if (!isCancelled) {
-          setExecution(response.data.data.execution as WorkflowExecution);
+          const current = response.data.data.execution as WorkflowExecution;
+          hasLoadedExecution = true;
+          setExecution(current);
+          if (current.status === "QUEUED" || current.status === "RUNNING") {
+            timer = setTimeout(fetchExecution, 1500);
+          }
         }
       } catch (err: any) {
         if (!isCancelled) {
           if (err?.response?.status === 401) {
             return;
           }
-          setError("Couldn't load execution log details.");
+          if (!hasLoadedExecution) {
+            setError("Couldn't load execution log details.");
+          } else {
+            timer = setTimeout(fetchExecution, 3000);
+          }
         }
       } finally {
         if (!isCancelled) {
@@ -75,10 +85,12 @@ export default function ExecutionDetailPage() {
       }
     }
 
+    let timer: ReturnType<typeof setTimeout>;
     fetchExecution();
 
     return () => {
       isCancelled = true;
+      clearTimeout(timer);
     };
   }, [executionId]);
 
@@ -133,8 +145,12 @@ export default function ExecutionDetailPage() {
 
               <div className="mt-6 grid grid-cols-1 gap-4 border-t border-white/[0.06] pt-5 sm:grid-cols-3">
                 <div className="rounded-2xl bg-dark-950 p-4 border border-white/[0.06]">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Started</p>
-                  <p className="mt-1 text-xs font-mono font-semibold text-slate-200">{formatDateTime(execution.startedAt)}</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                    {execution.startedAt ? "Started" : "Queued"}
+                  </p>
+                  <p className="mt-1 text-xs font-mono font-semibold text-slate-200">
+                    {formatDateTime(execution.startedAt ?? execution.createdAt)}
+                  </p>
                 </div>
                 <div className="rounded-2xl bg-dark-950 p-4 border border-white/[0.06]">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Completed</p>
@@ -147,6 +163,11 @@ export default function ExecutionDetailPage() {
                   </p>
                 </div>
               </div>
+              {execution.failureReason && (
+                <p className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs leading-relaxed text-rose-700">
+                  {execution.failureReason}
+                </p>
+              )}
             </div>
 
             {/* Execution logs timeline */}

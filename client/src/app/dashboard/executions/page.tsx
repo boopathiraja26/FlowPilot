@@ -2,16 +2,19 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Activity, CheckCircle2, AlertCircle, Clock, ArrowRight, Filter } from "lucide-react";
+import { AlertCircle, Clock, ArrowRight, Filter } from "lucide-react";
 
 import { DashboardShell } from "@/components/layout/DashboardShell";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { api } from "@/lib/api";
-import { WorkflowExecution } from "@/types/execution";
+import { ExecutionPagination, WorkflowExecution } from "@/types/execution";
 
-function formatDateTime(isoDate: string): string {
+const PAGE_SIZE = 20;
+
+function formatDateTime(isoDate: string | null): string {
+  if (!isoDate) return "--";
   return new Date(isoDate).toLocaleString(undefined, {
     year: "numeric",
     month: "short",
@@ -21,8 +24,8 @@ function formatDateTime(isoDate: string): string {
   });
 }
 
-function formatDuration(startedAt: string, completedAt: string | null): string {
-  if (!completedAt) return "--";
+function formatDuration(startedAt: string | null, completedAt: string | null): string {
+  if (!startedAt || !completedAt) return "--";
 
   const durationMs = new Date(completedAt).getTime() - new Date(startedAt).getTime();
   if (durationMs < 0) return "--";
@@ -39,7 +42,9 @@ export default function ExecutionHistoryPage() {
   const [executions, setExecutions] = useState<WorkflowExecution[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<"ALL" | "COMPLETED" | "RUNNING" | "FAILED">("ALL");
+  const [filter, setFilter] = useState<"ALL" | "QUEUED" | "COMPLETED" | "RUNNING" | "FAILED">("ALL");
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState<ExecutionPagination | null>(null);
 
   useEffect(() => {
     let isCancelled = false;
@@ -49,9 +54,15 @@ export default function ExecutionHistoryPage() {
       setError(null);
 
       try {
-        const response = await api.get("/executions");
+        const query = new URLSearchParams({
+          page: String(page),
+          limit: String(PAGE_SIZE),
+        });
+        if (filter !== "ALL") query.set("status", filter);
+        const response = await api.get(`/executions?${query.toString()}`);
         if (!isCancelled) {
           setExecutions(response.data.data.executions as WorkflowExecution[]);
+          setPagination(response.data.data.pagination as ExecutionPagination);
         }
       } catch (err: any) {
         if (!isCancelled) {
@@ -72,16 +83,7 @@ export default function ExecutionHistoryPage() {
     return () => {
       isCancelled = true;
     };
-  }, []);
-
-  const completedCount = executions.filter((e) => e.status === "COMPLETED").length;
-  const failedCount = executions.filter((e) => e.status === "FAILED").length;
-  const runningCount = executions.filter((e) => e.status === "RUNNING").length;
-
-  const filteredExecutions = executions.filter((e) => {
-    if (filter === "ALL") return true;
-    return e.status === filter;
-  });
+  }, [filter, page]);
 
   return (
     <DashboardShell>
@@ -92,59 +94,27 @@ export default function ExecutionHistoryPage() {
             <div className="flex items-center gap-2.5">
               <h1 className="text-2xl font-extrabold tracking-tight text-white">Execution Logs</h1>
               <span className="rounded-full bg-blue-950/60 px-2.5 py-0.5 text-xs font-bold text-blue-400 border border-blue-500/30 shadow-[0_0_12px_-2px_rgba(59,130,246,0.3)]">
-                {executions.length} Total Runs
+                {pagination?.total ?? 0} Matching Runs
               </span>
             </div>
             <p className="mt-1 text-sm text-slate-400">
-              Real-time pipeline telemetry, status monitoring, and step-by-step logs.
+              Browse persisted workflow runs, filter by outcome, and inspect step logs.
             </p>
           </div>
         </div>
 
-        {/* Stats Row */}
-        {!isLoading && !error && executions.length > 0 && (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 animate-fade-in">
-            <div className="rounded-2xl border border-white/[0.08] bg-dark-900/90 p-5 shadow-card flex items-center justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Executions</p>
-                <p className="mt-1 text-2xl font-black text-white">{executions.length}</p>
-              </div>
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-950/60 text-blue-400 border border-blue-500/30 shadow-[0_0_12px_-2px_rgba(59,130,246,0.3)]">
-                <Activity className="h-5 w-5" />
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-white/[0.08] bg-dark-900/90 p-5 shadow-card flex items-center justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Successful Runs</p>
-                <p className="mt-1 text-2xl font-black text-emerald-400">{completedCount}</p>
-              </div>
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-950/60 text-emerald-400 border border-emerald-500/30 shadow-[0_0_12px_-2px_rgba(16,185,129,0.3)]">
-                <CheckCircle2 className="h-5 w-5" />
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-white/[0.08] bg-dark-900/90 p-5 shadow-card flex items-center justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Failed / Errors</p>
-                <p className="mt-1 text-2xl font-black text-rose-400">{failedCount}</p>
-              </div>
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-rose-950/60 text-rose-400 border border-rose-500/30 shadow-[0_0_12px_-2px_rgba(244,63,94,0.3)]">
-                <AlertCircle className="h-5 w-5" />
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Filter Tabs */}
-        {!isLoading && !error && executions.length > 0 && (
+        {!isLoading && !error && (
           <div className="flex items-center gap-2 border-b border-white/[0.06] pb-3">
             <Filter className="h-4 w-4 text-slate-500 mr-1" />
-            {(["ALL", "COMPLETED", "RUNNING", "FAILED"] as const).map((tab) => (
+            {(["ALL", "QUEUED", "RUNNING", "COMPLETED", "FAILED"] as const).map((tab) => (
               <button
                 key={tab}
                 type="button"
-                onClick={() => setFilter(tab)}
+                onClick={() => {
+                  setPage(1);
+                  setFilter(tab);
+                }}
                 className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
                   filter === tab
                     ? "bg-blue-600/15 text-blue-400 border border-blue-500/30 shadow-[0_0_12px_rgba(59,130,246,0.2)]"
@@ -178,10 +148,14 @@ export default function ExecutionHistoryPage() {
         )}
 
         {/* Empty State */}
-        {!isLoading && !error && executions.length === 0 && (
+        {!isLoading && !error && pagination?.total === 0 && (
           <EmptyState
-            title="No execution history found"
-            description="Run a workflow from the builder or trigger an event to see logs here."
+            title={filter === "ALL" ? "No execution history found" : "No matching executions"}
+            description={
+              filter === "ALL"
+                ? "Run a workflow from the builder or trigger an event to see logs here."
+                : "No runs match this status filter. Choose another status or run a workflow."
+            }
             icon={Clock}
             actionLabel="View Workflows"
             onAction={() => window.location.href = "/dashboard/workflows"}
@@ -204,7 +178,7 @@ export default function ExecutionHistoryPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/[0.04]">
-                {filteredExecutions.map((execution) => (
+                {executions.map((execution) => (
                   <tr
                     key={execution.id}
                     className="group transition-colors hover:bg-white/[0.03]"
@@ -216,7 +190,9 @@ export default function ExecutionHistoryPage() {
                       <StatusBadge status={execution.status} />
                     </td>
                     <td className="px-6 py-4 text-xs font-medium text-slate-400 font-mono">
-                      {formatDateTime(execution.startedAt)}
+                      {execution.startedAt
+                        ? formatDateTime(execution.startedAt)
+                        : `Queued ${formatDateTime(execution.createdAt)}`}
                     </td>
                     <td className="px-6 py-4 text-xs font-medium text-slate-400 font-mono">
                       {execution.completedAt ? formatDateTime(execution.completedAt) : "--"}
@@ -237,6 +213,39 @@ export default function ExecutionHistoryPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+        {!isLoading && !error && pagination && pagination.total > 0 && (
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs text-slate-400">
+              Showing {Math.min((page - 1) * PAGE_SIZE + 1, pagination.total)}–
+              {Math.min(page * PAGE_SIZE, pagination.total)} of {pagination.total}
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setPage((current) => Math.max(1, current - 1))}
+                disabled={page <= 1}
+                className="rounded-lg border border-white/[0.1] px-3 py-2 text-xs font-semibold text-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Previous
+              </button>
+              <span className="px-2 text-xs text-slate-400">
+                Page {pagination.page} of {Math.max(1, pagination.totalPages)}
+              </span>
+              <button
+                type="button"
+                onClick={() =>
+                  setPage((current) =>
+                    Math.min(pagination.totalPages, current + 1)
+                  )
+                }
+                disabled={page >= pagination.totalPages}
+                className="rounded-lg border border-white/[0.1] px-3 py-2 text-xs font-semibold text-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Next
+              </button>
+            </div>
           </div>
         )}
       </div>

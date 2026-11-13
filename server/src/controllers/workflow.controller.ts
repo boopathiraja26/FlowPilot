@@ -10,6 +10,7 @@ import {
 import {
   createWorkflow,
   deleteWorkflow,
+  duplicateWorkflow,
   getWorkflowById,
   getWorkflows,
   updateWorkflow,
@@ -106,6 +107,27 @@ export const update = asyncHandler(async (req: Request, res: Response) => {
   res.status(200).json({
     success: true,
     message: "Workflow updated successfully",
+    data: { workflow },
+  });
+});
+
+// =========================================================
+// POST /api/workflows/:id/duplicate
+// =========================================================
+
+export const duplicate = asyncHandler(async (req: Request, res: Response) => {
+  const userId = getUserId(req);
+
+  const parsedParams = workflowIdParamSchema.safeParse(req.params);
+  if (!parsedParams.success) {
+    throw new ApiError(400, "Validation failed", parsedParams.error.flatten().fieldErrors);
+  }
+
+  const workflow = await duplicateWorkflow(userId, parsedParams.data.id);
+
+  res.status(201).json({
+    success: true,
+    message: "Workflow duplicated as a draft.",
     data: { workflow },
   });
 });

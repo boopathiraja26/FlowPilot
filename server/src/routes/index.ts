@@ -6,6 +6,9 @@ import workflowRoutes from "./workflow.routes";
 import aiRoutes from "./ai.routes";
 import executionRoutes from "./execution.routes";
 import workflowStepRoutes from "./workflow-step.routes";
+import integrationRoutes from "./integration.routes";
+import scheduleRoutes from "./schedule.routes";
+import analyticsRoutes from "./analytics.routes";
 
 const router = Router();
 
@@ -14,6 +17,9 @@ router.use("/auth", authRoutes);
 router.use("/workflows", workflowRoutes);
 router.use("/ai", aiRoutes);
 router.use("/executions", executionRoutes);
+router.use("/integrations", integrationRoutes);
+router.use("/schedules", scheduleRoutes);
+router.use("/analytics", analyticsRoutes);
 router.use("/", workflowStepRoutes);
 
 router.get("/", (_req, res) => {
@@ -26,6 +32,7 @@ router.get("/", (_req, res) => {
       "/api/auth",
       "/api/workflows",
       "/api/ai",
+      "/api/analytics",
     ],
   });
 });

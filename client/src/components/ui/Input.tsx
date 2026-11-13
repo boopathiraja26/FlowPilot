@@ -9,6 +9,13 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ label, error, id, icon, rightElement, className = "", ...props }, ref) => {
+    const ariaDescribedBy = [
+      props["aria-describedby"],
+      error && id ? `${id}-error` : undefined,
+    ]
+      .filter(Boolean)
+      .join(" ") || undefined;
+
     return (
       <div className="flex flex-col gap-1.5">
         {label && (
@@ -33,6 +40,8 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
                 : "border-slate-200 hover:border-slate-300"
             } ${className}`}
             {...props}
+            aria-invalid={error ? true : props["aria-invalid"]}
+            aria-describedby={ariaDescribedBy}
           />
           {rightElement && (
             <div className="absolute right-3.5 flex items-center justify-center text-slate-400 hover:text-slate-600">
@@ -41,7 +50,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           )}
         </div>
         {error && (
-          <p className="animate-fade-in text-xs font-semibold text-rose-600 flex items-center gap-1 mt-0.5">
+          <p id={id ? `${id}-error` : undefined} role="alert" className="animate-fade-in text-xs font-semibold text-rose-600 flex items-center gap-1 mt-0.5">
             <span>•</span> {error}
           </p>
         )}

@@ -1,22 +1,40 @@
-# FlowPilot Architecture (Phase 1 - Initialization)
+# FlowPilot Architecture
 
-This document is a placeholder for architecture notes as the project evolves.
+## Current implementation
 
-## Current phase scope
+- `client/` is a Next.js 15 App Router application using React, TypeScript, Tailwind CSS, and React Flow.
+- `server/` is an Express/TypeScript API. Route handlers use validation, authentication middleware where required, and service modules for persistence and execution.
+- `server/prisma/schema.prisma` defines the PostgreSQL data model for users, workflows, steps, executions, and execution logs; migrations are under `server/prisma/migrations/`.
+- Authentication uses bcrypt and JWTs in HTTP-only cookies. Workflow and execution APIs apply per-user ownership checks. Authenticated `GET/PATCH /api/auth/me` reads or updates only the current user's profile; `POST /api/auth/password` verifies the current password and hashes the new one with bcrypt. Profile responses never include password hashes.
+- JWTs carry a `passwordVersion` claim validated against the user row on each authenticated request. Password changes increment the version and issue a replacement token for the active session; tokens from other sessions become invalid on their next request. Older tokens without the claim map to version 0 for compatibility. Profile updates do not increment the version. The migration adding this field is additive and has not been applied.
+- Gemini and SMTP saved credentials use a user-scoped `user_integrations` row, encrypted as versioned AES-256-GCM ciphertext. Authenticated integration endpoints expose status and timestamps only; the UI has write-only secret fields. An optional server-only `INTEGRATION_ENCRYPTION_KEY` (32 bytes encoded as 64 hex characters) is required to save/decrypt these credentials. If a user has no saved credentials, provider execution falls back to the existing server environment configuration.
+- Workflow status lifecycle uses the existing `DRAFT`, `ACTIVE`, and `ARCHIVED` enum. Workflows can be duplicated into a new draft; credential-like fields in copied step config are blanked.
+- Synchronous workflow execution remains available on the existing endpoint for compatibility. The dashboard submits to a separate authenticated queue endpoint; it persists a `QUEUED` execution, stores its trigger JSON in PostgreSQL, and enqueues a BullMQ job whose ID is the execution ID.
+- A separate worker claims queued records with a conditional `QUEUED` → `RUNNING` status update, loads ordered steps, validates configuration, and invokes the same sequential execution engine. It records `COMPLETED` or `FAILED` plus a generic failure reason, and clears persisted trigger JSON at terminal state. The API omits trigger JSON from execution responses.
+- Queue insertion is repaired on worker startup by scanning `QUEUED` database rows and enqueueing missing jobs by the same execution ID. Redis uses append-only persistence in the local Compose service.
+- Manual execution accepts a generic JSON trigger payload. AI, email, and webhook templates can resolve values from the trigger or prior steps, such as `{{step_1.employee_email}}`; onboarding-specific welcome formatting is only a fallback example.
+- New execution logs persist step status and generic messages, not step output or provider error details. Trigger JSON is temporarily persisted for queued/running work and removed when terminal; historical logs may still contain earlier AI output.
+- Gemini, SMTP email, and HTTP webhook integrations are implemented in server services. Their credentials are configured server-side.
+- User integration reads and writes are scoped by the authenticated user ID and provider. SMTP transporters are isolated per user and invalidated on save/disconnect; provider failures use generic messages. The additive integration migration is checked in but must be applied explicitly to a development database before using the feature.
+- Schedules are persisted in `workflow_schedules`, scoped through workflow ownership, and managed through authenticated list/create/pause/resume/delete routes. The separate worker polls due rows every 15 seconds, atomically claims each occurrence with the schedule's previous `nextRunAt`, creates a queued execution in the same transaction, then enqueues it by execution ID. Worker startup recovery handles a crash between DB commit and queue insertion.
+- `/api/analytics?days=7|30|90` is authenticated and aggregates persisted executions through a parameterized SQL query joined to owner-scoped workflows. It reports UTC daily status counts, completed/failed success rate, and average duration for completed runs with valid timestamps; it does not read or return execution input/output data.
+- `/api/analytics/dashboard-summary` is authenticated and returns lifetime execution counts grouped by status and terminal success rate, using a parameterized user-scoped database aggregation. The dashboard fetches that summary plus only the five newest executions; its displayed execution metrics remain all-time.
+- Notification preferences, MFA, and session/device management remain unimplemented.
+- Shared controls expose keyboard focus indicators, input errors are associated with their fields, reduced-motion preferences are respected, dialogs trap/restore keyboard focus, and the dashboard navigation becomes an overlay on narrow screens.
+- Public landing-page workflow animations, payloads, outputs, statuses, and logs are illustrative sample content, not live executions or provider responses. Gemini and SMTP steps require configured credentials; persisted run status is shown in the authenticated dashboard.
 
-- Monorepo scaffolding (client + server)
-- No database, ORM, cache, containerization, or authentication logic yet
+## Current boundaries
 
-## Structure
+- The dashboard index uses the unpaginated workflow list for workflow counts and recent workflows, an owner-scoped database aggregate for all-time execution metrics, and a five-row paginated execution request for recent activity. These are persisted-data summaries, not real-time guarantees. The Analytics page consumes the time-window aggregate API and includes an accessible chart and daily table with loading, error, and empty states. Actual database execution and query performance have not been verified in this environment.
+- Execution history supports `page`, `limit`, `status`, and `workflowId` query parameters with pagination metadata. Requests with no query parameters keep the legacy all-results response for current clients.
+- BullMQ jobs use one attempt and workers set `maxStalledCount: 0`; a stalled job is failed instead of re-running side-effecting steps. This avoids automatic duplicate email/webhook actions but is not exactly-once delivery. A human must inspect external outcomes before starting another run.
+- Worker restart recovery requeues database records still marked `QUEUED`. A crash after an external side effect may leave the execution `RUNNING` until Redis detects the stalled job and a worker resumes; database/Redis data loss and external delivery ambiguity remain operational recovery limitations.
+- Schedules support one-time UTC timestamps and recurring intervals from 5 minutes to 1 year. Missed intervals coalesce to one run after worker recovery; they are not replayed. Each interval occurrence is a new execution, never a retry. Only active workflows are scheduled; deactivated workflows defer due runs until reactivated. Removing a schedule does not cancel an execution already queued. Calendar cron, timezone-specific recurrence, inbound webhook triggers, and schedule quotas are not implemented. Schedule trigger JSON is stored as workflow input and rejects credential-like keys; protect the database and avoid unnecessary personal data.
+- Docker Compose starts only local Redis with AOF persistence. PostgreSQL, client, API, and worker are started separately. Inbound webhook triggers, calendar-cron schedules, provider idempotency, and production orchestration are not implemented.
+- The database-backed application requires `DATABASE_URL` and generated Prisma Client. The checked-in environment examples do not enumerate all variables consumed by the server.
+- Losing `INTEGRATION_ENCRYPTION_KEY` makes saved credentials unreadable. Back up the key separately from the database, and retain the same key with a database restore. No automated key-rotation/re-encryption tool exists. Live Gemini/SMTP calls were not exercised as part of implementation verification.
+- The schedule migration is additive and has not been applied to any database. Live Redis scheduling and PostgreSQL concurrency behavior have not been integration-tested in this environment.
+- Server lint is a placeholder. `npm test` runs focused Node.js built-in tests for execution configuration, queue policy, dashboard metrics, and analytics aggregation; broader database-backed integration and end-to-end tests are not configured.
+- The Compose YAML was parsed locally, but Docker CLI is unavailable in this environment; the Redis container was not started or connectivity-tested.
 
-- `client/` - Next.js 15 (App Router) + TypeScript + Tailwind CSS frontend
-- `server/` - Express + TypeScript backend API
-- `docs/` - project documentation
-
-## Planned (future phases)
-
-- PostgreSQL + Prisma for persistence
-- Redis for caching / rate-limit store
-- Full JWT authentication (access + refresh token flow)
-- Docker Compose implementation (client, server, db, cache)
-- CI/CD pipeline
+See `PROJECT_PLAN.md` for the prioritized roadmap, `PROJECT_STATUS.md` for verified baseline results, and `TECHNICAL_DECISIONS.md` for boundaries requiring product or deployment decisions.

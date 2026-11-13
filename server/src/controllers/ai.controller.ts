@@ -24,14 +24,14 @@ function getUserId(req: Request): string {
 // =========================================================
 
 export const generate = asyncHandler(async (req: Request, res: Response) => {
-  getUserId(req);
+  const userId = getUserId(req);
 
   const parsed = generateWorkflowSchema.safeParse(req.body);
   if (!parsed.success) {
     throw new ApiError(400, "Validation failed", parsed.error.flatten().fieldErrors);
   }
 
-  const workflow = await generateWorkflowFromPrompt(parsed.data);
+  const workflow = await generateWorkflowFromPrompt(parsed.data, userId);
 
   res.status(200).json({
     success: true,
@@ -52,7 +52,10 @@ export const generateAndSave = asyncHandler(async (req: Request, res: Response) 
     throw new ApiError(400, "Validation failed", parsed.error.flatten().fieldErrors);
   }
 
-  const generatedWorkflow = await generateWorkflowFromPrompt(parsed.data);
+  const generatedWorkflow = await generateWorkflowFromPrompt(
+    parsed.data,
+    userId
+  );
   const savedWorkflow = await saveGeneratedWorkflow(userId, generatedWorkflow);
 
   res.status(201).json({

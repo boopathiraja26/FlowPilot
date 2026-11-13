@@ -1,150 +1,61 @@
 # FlowPilot
 
-A production-ready monorepo scaffold with a Next.js 15 client and an Express
-+ TypeScript server.
+FlowPilot is a workflow-automation application with a Next.js client and an Express API. The current implementation supports authenticated workflow management, an AI-assisted React Flow builder, manual workflow execution, and execution history. It is an active product prototype; the production-readiness items in the roadmap are not yet complete.
 
-> **Phase status:** This is the project **initialization / architecture**
-> phase only. There is no database, ORM (Prisma), Redis, Docker
-> implementation, or authentication logic yet — those are placeholders /
-> structure for a future phase.
+## Architecture
 
-## Folder structure
+- `client/` — Next.js 15 App Router, React, TypeScript, Tailwind CSS, and React Flow.
+- `server/` — Express and TypeScript API, Prisma client, authentication, workflow execution, and Gemini/SMTP/webhook integrations.
+- `server/prisma/` — PostgreSQL schema and migrations.
+- `docs/architecture.md` — current architecture and implementation boundaries.
+- `PROJECT_PLAN.md`, `PROJECT_STATUS.md`, `TECHNICAL_DECISIONS.md` — roadmap, verified status, and decisions.
 
-```
-FlowPilot/
-├── client/                 # Next.js 15 + TypeScript + Tailwind CSS (App Router)
-│   ├── src/
-│   │   ├── app/
-│   │   │   ├── page.tsx           # Landing page
-│   │   │   ├── login/page.tsx     # Login page
-│   │   │   ├── register/page.tsx  # Register page
-│   │   │   ├── dashboard/page.tsx # Dashboard page
-│   │   │   ├── layout.tsx
-│   │   │   └── globals.css
-│   │   ├── components/
-│   │   │   ├── layout/             # Sidebar, Header, DashboardShell
-│   │   │   └── ui/                 # Button, Input
-│   │   ├── lib/api.ts               # Axios instance
-│   │   ├── store/                   # Zustand stores
-│   │   ├── schemas/                 # Zod validation schemas
-│   │   └── types/
-│   ├── public/
-│   ├── package.json
-│   ├── tsconfig.json
-│   ├── next.config.mjs
-│   ├── tailwind.config.ts
-│   ├── postcss.config.mjs
-│   ├── .eslintrc.json
-│   └── .env.example
-├── server/                 # Node.js + Express + TypeScript
-│   ├── src/
-│   │   ├── config/          # env, cors, jwt config structure
-│   │   ├── controllers/     # health, auth (stubbed)
-│   │   ├── middleware/      # error handling, rate limiting, auth structure
-│   │   ├── routes/          # health, auth, API base router
-│   │   ├── types/
-│   │   ├── app.ts
-│   │   └── server.ts
-│   ├── package.json
-│   ├── tsconfig.json
-│   └── .env.example
-├── docs/
-│   └── architecture.md
-├── docker-compose.yml       # placeholder only
-├── .gitignore
-├── .env.example
-├── package.json             # root scripts
-└── README.md
-```
+The public landing page contains illustrative workflow animations, sample outputs, statuses, and logs. They do not execute workflows or indicate that provider credentials are configured; use the authenticated dashboard to view persisted execution history.
 
-## Prerequisites
+## Local development
 
-- Node.js >= 18.18
-- npm >= 9
+Requirements: Node.js 18.18 or later and npm 9 or later.
 
-## Setup
+1. Install the locked workspace dependencies with `npm ci` (or use `npm run install:all` for the repository's install script).
+2. Create local environment files from the root, client, and server examples. Do not commit local environment files.
+3. Configure the client API URL and server values for PostgreSQL (`DATABASE_URL`), Redis (`REDIS_URL`), JWT (`JWT_SECRET`), and optional server-wide Gemini/SMTP fallback credentials. To save user-scoped credentials in Integrations, generate `INTEGRATION_ENCRYPTION_KEY` with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` and put the 64-character hex value in `server/.env` only. Never expose or commit this key.
+4. Start local Redis with `docker compose up -d redis`. The Compose file starts Redis only; the client, API, worker, and PostgreSQL still run separately.
+5. Apply migrations to a local development database with `npm run migrate --prefix server`. Review migrations before applying them to any other database. The user-integration migration is additive and is not applied automatically by this project.
+6. Start the client and API with `npm run dev`, then start the separate background worker with `npm run dev:worker` in another terminal. The worker polls durable schedules every 15 seconds. Defaults are `http://localhost:3000` and `http://localhost:5000`.
 
-Clone/download the project, then from the repo root:
+The database must be provisioned and migrations applied before using database-backed API features. Do not use real credentials in examples, screenshots, or commits. The worker persists queued trigger JSON in PostgreSQL only until execution reaches a terminal state, then clears it. Protect database backups and configure an appropriate retention/privacy policy for production.
 
-```bash
-# 1. Install dependencies for root, client, and server
-npm run install:all
+User-saved Gemini and SMTP credentials are encrypted server-side with AES-256-GCM. The encryption key is not stored in PostgreSQL: protect it separately, include it in secure backups, and keep it consistent when restoring the database. Losing the key makes saved credentials unreadable. There is no automated key-rotation utility; changing the key requires re-entering saved credentials or a separately planned re-encryption operation. Users without saved credentials continue to use server environment configuration.
 
-# 2. Copy environment files
-cp .env.example .env
-cp client/.env.example client/.env.local
-cp server/.env.example server/.env
+## Available checks and commands
 
-# 3. Edit the copied .env files with real values (JWT secrets, etc.)
-```
+| Command | Purpose |
+| --- | --- |
+| `npm run dev` | Run client and server in development |
+| `docker compose up -d redis` | Start local Redis with append-only persistence |
+| `npm run dev:worker` | Run the separate BullMQ worker in development |
+| `npm run migrate --prefix server` | Apply checked-in Prisma migrations to the configured database |
+| `npm run build` | Build client, generate Prisma Client, and compile server |
+| `npm run lint` | Run the client lint script |
+| `npm run typecheck --prefix client` | Typecheck client |
+| `npm run typecheck --prefix server` | Typecheck server (requires generated Prisma Client) |
+| `npm test` | Build the server and run focused server execution/queue/management/analytics/account-settings and client tests |
 
-If you'd rather install manually:
+The server lint script is a placeholder that exits successfully without running a linter. The test command does not replace database-backed integration or end-to-end coverage.
 
-```bash
-npm install
-cd client && npm install && cd ..
-cd server && npm install && cd ..
-```
+## Current API surface
 
-## Running the app
+- `GET /api/health`
+- `POST /api/auth/register`, `/api/auth/login`, `/api/auth/logout`
+- Authenticated workflow and workflow-step CRUD/reordering
+- Authenticated `GET /api/auth/me` and `PATCH /api/auth/me` for the current user's profile; `POST /api/auth/password` verifies the current password, invalidates older sessions, and returns a replacement token for the active session
+- Workflow activation/deactivation, archive/restore, and credential-scrubbed duplication
+- Authenticated AI workflow generation
+- Authenticated `GET /api/integrations`, `PUT /api/integrations/:provider`, and `DELETE /api/integrations/:provider`; responses expose connection status and update time only. Saved secrets are write-only in the client.
+- Authenticated `GET /api/schedules`, `POST /api/schedules`, `PATCH /api/schedules/:id`, and `DELETE /api/schedules/:id` for one-time and recurring workflow runs.
+- Authenticated `GET /api/analytics/dashboard-summary` for all-time owner-scoped execution counts; the dashboard loads only the five newest execution records for its recent-activity list.
+- Authenticated `GET /api/analytics?days=7|30|90` for owner-scoped execution totals, status outcomes, completed-run duration, and daily trends from persisted workflow executions.
+- Authenticated synchronous workflow execution for compatibility; the dashboard uses `POST /api/executions/:workflowId/queue` and polls the existing execution-detail endpoint for queued/running/terminal status
+- Paginated/filterable execution history and execution details, including safe failure reasons
 
-Run both apps together from the root:
-
-```bash
-npm run dev
-```
-
-This runs the client (http://localhost:3000) and server
-(http://localhost:5000) concurrently, with labeled/colored output.
-
-Or run them separately:
-
-```bash
-npm run dev:client   # Next.js dev server on :3000
-npm run dev:server   # Express API on :5000 (ts-node-dev, auto-restarts)
-```
-
-## Building for production
-
-```bash
-npm run build           # builds both client and server
-npm run build:client    # next build
-npm run build:server    # tsc compile to server/dist
-
-npm run start:client    # next start
-npm run start:server    # node server/dist/server.js
-```
-
-## API
-
-The server exposes:
-
-- `GET /api` — API info / index
-- `GET /api/health` — health check
-- `POST /api/auth/register` — stubbed (501, not implemented yet)
-- `POST /api/auth/login` — stubbed (501, not implemented yet)
-- `POST /api/auth/logout` — stubbed (501, not implemented yet)
-- `GET /api/auth/me` — stubbed (501, not implemented yet)
-
-All `/api` routes are behind `helmet`, `cors` (scoped to `CLIENT_ORIGIN`),
-`morgan` request logging, and `express-rate-limit`.
-
-## What's intentionally NOT included yet
-
-Per this phase's scope, the following are **not** implemented (only
-placeholders/structure exist where noted):
-
-- PostgreSQL / any database
-- Prisma (or any ORM)
-- Redis
-- A working Docker setup (`docker-compose.yml` is a placeholder)
-- Real authentication (JWT config structure and route stubs exist, but no
-  password hashing, token issuance, or session logic)
-
-## Tech stack
-
-**Client:** Next.js 15 (App Router), TypeScript, Tailwind CSS, Axios,
-Zustand, React Hook Form, Zod, ESLint
-
-**Server:** Express.js, TypeScript, ts-node-dev, dotenv, cors, helmet,
-morgan, express-rate-limit, cookie-parser, jsonwebtoken (config only)
+See the route files under `server/src/routes/` for the implemented endpoints. Analytics covers executions created during the selected UTC calendar-day window; success rate uses only completed and failed runs, and average duration includes completed runs with valid start/end timestamps. Execution history accepts `page`, `limit` (maximum 100), `status`, and `workflowId` query parameters; omitting all query parameters preserves the legacy full-list response. Queue jobs are keyed by execution ID, have one attempt, and are not automatically retried after worker stalls because workflow steps may send email or call webhooks. This is at-most-one worker attempt, not exactly-once external delivery; failed executions require a human to inspect possible side effects before starting a new run. Calendar-cron/timezone schedules, inbound webhooks, idempotency keys for external providers, and a full production Docker deployment are not implemented.

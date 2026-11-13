@@ -42,21 +42,6 @@ interface StepFormState {
   webhookUrl: string;
   webhookMethod: string;
 
-  triggerType: string;
-  formId: string;
-
-  employeeName: string;
-  employeeEmail: string;
-  department: string;
-  jobTitle: string;
-  companyName: string;
-  managerName: string;
-  managerEmail: string;
-  startDate: string;
-  companyAddress: string;
-  companyPhone: string;
-  eventName: string;
-
   configText: string;
 }
 
@@ -106,71 +91,6 @@ function createFormState(step: WorkflowStep): StepFormState {
       typeof config.method === "string"
         ? config.method
         : "POST",
-
-    triggerType:
-      typeof config.trigger_type === "string"
-        ? config.trigger_type
-        : "",
-
-    formId:
-      typeof config.form_id === "string"
-        ? config.form_id
-        : "",
-
-    employeeName:
-      typeof config.employee_name === "string"
-        ? config.employee_name
-        : "",
-
-    employeeEmail:
-      typeof config.employee_email === "string"
-        ? config.employee_email
-        : "",
-
-    department:
-      typeof config.department === "string"
-        ? config.department
-        : "",
-
-    jobTitle:
-      typeof config.job_title === "string"
-        ? config.job_title
-        : "",
-
-    companyName:
-      typeof config.company_name === "string"
-        ? config.company_name
-        : "",
-
-    managerName:
-      typeof config.manager_name === "string"
-        ? config.manager_name
-        : "",
-
-    managerEmail:
-      typeof config.manager_email === "string"
-        ? config.manager_email
-        : "",
-
-    startDate:
-      typeof config.start_date === "string"
-        ? config.start_date
-        : "",
-
-    companyAddress:
-      typeof config.company_address === "string"
-        ? config.company_address
-        : "",
-
-    companyPhone:
-      typeof config.company_phone === "string"
-        ? config.company_phone
-        : "",
-
-    eventName:
-      typeof config.event === "string"
-        ? config.event
-        : "employee_added",
 
     configText: JSON.stringify(config, null, 2),
   };
@@ -254,21 +174,6 @@ export function StepEditor({
         break;
 
       case "TRIGGER":
-        config.trigger_type = form.triggerType;
-        config.form_id = form.formId;
-
-        config.employee_name = form.employeeName;
-        config.employee_email = form.employeeEmail;
-        config.department = form.department;
-        config.job_title = form.jobTitle;
-        config.company_name = form.companyName;
-        config.manager_name = form.managerName;
-        config.manager_email = form.managerEmail;
-        config.start_date = form.startDate;
-        config.company_address = form.companyAddress;
-        config.company_phone = form.companyPhone;
-        config.event = form.eventName;
-
         break;
     }
 
@@ -530,59 +435,13 @@ export function StepEditor({
           <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-3 space-y-2.5">
             <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-700">
               <Zap className="h-3.5 w-3.5" />
-              <span>Trigger Payload Schema</span>
+              <span>Trigger Payload</span>
             </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <input
-                value={form.employeeName}
-                disabled={isSaving}
-                onChange={(e) => updateField("employeeName", e.target.value)}
-                placeholder="Employee Name"
-                className={inputClasses}
-              />
-              <input
-                value={form.employeeEmail}
-                disabled={isSaving}
-                onChange={(e) => updateField("employeeEmail", e.target.value)}
-                placeholder="Employee Email"
-                className={inputClasses}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <input
-                value={form.department}
-                disabled={isSaving}
-                onChange={(e) => updateField("department", e.target.value)}
-                placeholder="Department"
-                className={inputClasses}
-              />
-              <input
-                value={form.jobTitle}
-                disabled={isSaving}
-                onChange={(e) => updateField("jobTitle", e.target.value)}
-                placeholder="Job Title"
-                className={inputClasses}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <input
-                value={form.companyName}
-                disabled={isSaving}
-                onChange={(e) => updateField("companyName", e.target.value)}
-                placeholder="Company Name"
-                className={inputClasses}
-              />
-              <input
-                value={form.managerName}
-                disabled={isSaving}
-                onChange={(e) => updateField("managerName", e.target.value)}
-                placeholder="Manager Name"
-                className={inputClasses}
-              />
-            </div>
+            <p className="text-[11px] leading-relaxed text-emerald-900/70">
+              A manual run can submit any JSON object. Reference its values in
+              later steps with placeholders such as {"{{trigger.email}}"}.
+              Example payloads are available in the Execute Workflow dialog.
+            </p>
           </div>
         )}
 

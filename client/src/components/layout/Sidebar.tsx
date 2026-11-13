@@ -1,24 +1,50 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Workflow, GitFork, Activity, PlusCircle, ChevronRight } from "lucide-react";
+import { Workflow, LayoutDashboard, GitFork, Activity, PlusCircle, ChevronRight, KeyRound, CalendarClock, BarChart3, Settings } from "lucide-react";
 import { useUIStore } from "@/store/useUIStore";
+import { useDialogFocus } from "@/hooks/useDialogFocus";
 
 const navItems = [
+  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "Workflows", href: "/dashboard/workflows", icon: GitFork },
   { label: "Executions", href: "/dashboard/executions", icon: Activity },
+  { label: "Integrations", href: "/dashboard/integrations", icon: KeyRound },
+  { label: "Schedules", href: "/dashboard/schedules", icon: CalendarClock },
+  { label: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
+  { label: "Settings", href: "/dashboard/settings", icon: Settings },
   { label: "New Workflow", href: "/dashboard/workflows/new", icon: PlusCircle },
 ];
 
 export function Sidebar() {
   const isSidebarOpen = useUIStore((state) => state.isSidebarOpen);
+  const setSidebarOpen = useUIStore((state) => state.setSidebarOpen);
   const pathname = usePathname();
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
+  const navRef = useDialogFocus<HTMLElement>(
+    isMobileViewport && isSidebarOpen,
+    () => setSidebarOpen(false)
+  );
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 767px)");
+    const updateViewport = () => setIsMobileViewport(mediaQuery.matches);
+    updateViewport();
+    mediaQuery.addEventListener("change", updateViewport);
+    return () => mediaQuery.removeEventListener("change", updateViewport);
+  }, []);
 
   return (
     <aside
-      className={`h-screen shrink-0 border-r border-slate-200 bg-white transition-all duration-200 ease-in-out z-30 ${
-        isSidebarOpen ? "w-64" : "w-0 overflow-hidden md:w-20"
+      ref={navRef}
+      id="dashboard-navigation"
+      role={isMobileViewport && isSidebarOpen ? "dialog" : undefined}
+      aria-modal={isMobileViewport && isSidebarOpen ? true : undefined}
+      aria-label="Navigation menu"
+      className={`fixed inset-y-0 left-0 z-30 h-screen shrink-0 border-r border-slate-200 bg-white transition-all duration-200 ease-in-out md:relative md:inset-auto md:visible ${
+        isSidebarOpen ? "visible w-64 translate-x-0" : "invisible w-0 -translate-x-full overflow-hidden md:w-20 md:translate-x-0"
       }`}
     >
       {/* Brand Header */}
@@ -41,7 +67,7 @@ export function Sidebar() {
       </div>
 
       {/* Navigation Links */}
-      <nav className="flex flex-col gap-1 p-3">
+      <nav aria-label="Primary navigation" className="flex flex-col gap-1 p-3">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname?.startsWith(item.href));
@@ -50,7 +76,12 @@ export function Sidebar() {
             <Link
               key={item.label}
               href={item.href}
-              className={`group relative flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-all duration-150 ${
+              onClick={() => {
+                if (window.matchMedia("(max-width: 767px)").matches) {
+                  setSidebarOpen(false);
+                }
+              }}
+              className={`group relative flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${
                 isActive
                   ? "bg-blue-50 text-blue-700 border border-blue-100 font-bold"
                   : "text-slate-600 hover:bg-slate-50 hover:text-slate-900 border border-transparent"

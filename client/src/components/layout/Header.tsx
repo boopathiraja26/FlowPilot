@@ -7,13 +7,14 @@ import { useUIStore } from "@/store/useUIStore";
 
 export function Header() {
   const router = useRouter();
+  const isSidebarOpen = useUIStore((state) => state.isSidebarOpen);
   const toggleSidebar = useUIStore((state) => state.toggleSidebar);
 
   async function handleLogout() {
     try {
       await api.post("/auth/logout");
-    } catch (error) {
-      console.error(error);
+    } catch {
+      // Local session state is cleared even if the server is unavailable.
     } finally {
       if (typeof window !== "undefined") {
         localStorage.removeItem("flowpilot_token");
@@ -27,7 +28,10 @@ export function Header() {
     <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-slate-200 bg-white/90 px-4 sm:px-6 backdrop-blur-md">
       <div className="flex items-center gap-4">
         <button
+          type="button"
           onClick={toggleSidebar}
+          aria-expanded={isSidebarOpen}
+          aria-controls="dashboard-navigation"
           className="rounded-xl p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           title="Toggle Sidebar"
           aria-label="Toggle Sidebar"
@@ -48,8 +52,9 @@ export function Header() {
         </div>
 
         <button
+          type="button"
           onClick={handleLogout}
-          className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-600 shadow-sm transition-all duration-150 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 active:scale-[0.98]"
+          className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-600 shadow-sm transition-all duration-150 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
         >
           <LogOut className="h-3.5 w-3.5" />
           <span>Logout</span>

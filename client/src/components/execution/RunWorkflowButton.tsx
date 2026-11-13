@@ -25,7 +25,7 @@ export function RunWorkflowButton({
     setIsRunning(true);
 
     try {
-      const response = await api.post(`/executions/${workflowId}`, triggerData ?? {});
+      const response = await api.post(`/executions/${workflowId}/queue`, triggerData ?? {});
       const executionId = response.data?.data?.execution?.id;
 
       if (onSuccess && executionId) {

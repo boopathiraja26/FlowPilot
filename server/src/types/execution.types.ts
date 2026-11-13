@@ -3,7 +3,7 @@
 // =========================================================
 
 export type ExecutionStatus =
-  | "PENDING"
+  | "QUEUED"
   | "RUNNING"
   | "COMPLETED"
   | "FAILED";
@@ -46,7 +46,7 @@ export interface WorkflowExecutionResult {
 
   status: ExecutionStatus;
 
-  startedAt: Date;
+  startedAt: Date | null;
   completedAt?: Date;
 
   durationMs?: number;

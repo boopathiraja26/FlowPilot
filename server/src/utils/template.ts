@@ -3,6 +3,38 @@
  * Supports dot-notation nested paths, e.g. {{trigger.employee_name}}, {{step_1.employee_email}}, {{step_2.output}}
  */
 
+export type TemplateContext = Record<string, unknown>;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+export class TemplateResolutionError extends Error {
+  constructor(path: string) {
+    super(`Template reference "${path}" could not be resolved.`);
+    this.name = "TemplateResolutionError";
+  }
+}
+
+const TEMPLATE_REFERENCE = /\{\{\s*([\w.-]+)\s*\}\}/g;
+const FORBIDDEN_PATH_PARTS = new Set(["__proto__", "prototype", "constructor"]);
+
+export function getTemplateReferences(template: string): {
+  paths: string[];
+  malformed: boolean;
+} {
+  const paths: string[] = [];
+  const remaining = template.replace(TEMPLATE_REFERENCE, (_match, path: string) => {
+    paths.push(path);
+    return "";
+  });
+
+  return {
+    paths,
+    malformed: remaining.includes("{{") || remaining.includes("}}"),
+  };
+}
+
 /**
  * Safely accesses a nested property within an object using a dot-delimited path.
  *
@@ -10,19 +42,37 @@
  * @param path Dot-separated path string (e.g. "step_1.employee_email")
  * @returns The resolved value at path, or undefined if not found
  */
-export function getNestedValue(obj: Record<string, any>, path: string): any {
+export function getNestedValue(
+  obj: TemplateContext,
+  path: string
+): unknown {
   if (!obj || typeof obj !== "object") {
     return undefined;
   }
 
   const parts = path.trim().split(".");
-  let current: any = obj;
+  if (parts.some((part) => FORBIDDEN_PATH_PARTS.has(part))) {
+    return undefined;
+  }
+
+  let current: unknown = obj;
 
   for (const part of parts) {
     if (current === null || current === undefined) {
       return undefined;
     }
-    current = current[part];
+    if (Array.isArray(current)) {
+      if (!/^\d+$/.test(part)) return undefined;
+      current = current[Number(part)];
+    } else if (typeof current === "object") {
+      const record = current as Record<string, unknown>;
+      if (!Object.prototype.hasOwnProperty.call(record, part)) {
+        return undefined;
+      }
+      current = record[part];
+    } else {
+      return undefined;
+    }
   }
 
   return current;
@@ -40,19 +90,25 @@ export function getNestedValue(obj: Record<string, any>, path: string): any {
  */
 export function resolveTemplate(
   template: string,
-  context: Record<string, any>
+  context: TemplateContext
 ): string {
-  if (typeof template !== "string") {
-    return template;
-  }
-
-  return template.replace(/\{\{\s*([\w\.-]+)\s*\}\}/g, (_match, path) => {
-    const value = getNestedValue(context, path);
+  return template.replace(TEMPLATE_REFERENCE, (_match, path: string) => {
+    const directValue = getNestedValue(context, path);
+    const firstPart = path.split(".")[0];
+    const value =
+      directValue ??
+      (firstPart === "trigger" || /^step_\d+$/.test(firstPart)
+        ? undefined
+        : getNestedValue(context, `trigger.${path}`));
     if (value === undefined || value === null) {
-      return "";
+      throw new TemplateResolutionError(path);
     }
     if (typeof value === "object") {
-      return JSON.stringify(value);
+      const serialized = JSON.stringify(value);
+      if (serialized === undefined) {
+        throw new TemplateResolutionError(path);
+      }
+      return serialized;
     }
     return String(value);
   });
@@ -65,33 +121,28 @@ export function resolveTemplate(
  * @param context The execution context object containing step and trigger data
  * @returns A new object/array/value with all string templates resolved
  */
-export function resolveObjectTemplates<T>(
-  obj: T,
-  context: Record<string, any>
-): T {
+export function resolveObjectTemplates(
+  obj: unknown,
+  context: TemplateContext
+): unknown {
   if (obj === null || obj === undefined) {
     return obj;
   }
 
   if (typeof obj === "string") {
-    return resolveTemplate(obj, context) as unknown as T;
+    return resolveTemplate(obj, context);
   }
 
   if (Array.isArray(obj)) {
-    return obj.map((item) =>
-      resolveObjectTemplates(item, context)
-    ) as unknown as T;
+    return obj.map((item) => resolveObjectTemplates(item, context));
   }
 
-  if (typeof obj === "object") {
-    const resolvedObj: Record<string, any> = {};
-    for (const key of Object.keys(obj)) {
-      resolvedObj[key] = resolveObjectTemplates(
-        (obj as Record<string, any>)[key],
-        context
-      );
+  if (isRecord(obj)) {
+    const resolvedObj: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(obj)) {
+      resolvedObj[key] = resolveObjectTemplates(value, context);
     }
-    return resolvedObj as T;
+    return resolvedObj;
   }
 
   return obj;
@@ -161,11 +212,11 @@ function formatStartDate(dateStr?: string): string {
 /** Escape HTML to prevent injection */
 function escapeHtml(str: unknown): string {
   return String(str)
-    .replace(/\u0026/g, "\u0026amp;")
-    .replace(/\u003c/g, "\u0026lt;")
-    .replace(/\u003e/g, "\u0026gt;")
-    .replace(/\\\"/g, "\u0026quot;")
-    .replace(/'/g, "\u0026#39;");
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 /**
@@ -201,6 +252,10 @@ export function renderWelcomeEmailHtml(
   const rawStartDate = triggerData.start_date || "";
   const formattedStartDate = formatStartDate(rawStartDate);
   const companyName = triggerData.company_name || "FlowPilot";
+  const safeEmployeeName = escapeHtml(employeeName);
+  const safeCompanyName = escapeHtml(companyName);
+  const safeJobTitle = escapeHtml(jobTitle || "team member");
+  const safeManagerName = escapeHtml(managerName);
 
   const contextMap: Record<string, string> = {
     employee_name: employeeName,
@@ -212,7 +267,9 @@ export function renderWelcomeEmailHtml(
     company_name: companyName,
   };
 
-  const cleanedAiMessage = aiBodyMessage ? truncateAiMessage(cleanText(aiBodyMessage, contextMap)) : "";
+  const cleanedAiMessage = aiBodyMessage
+    ? escapeHtml(truncateAiMessage(cleanText(aiBodyMessage, contextMap)))
+    : "";
 
   // Build Onboarding details table rows (only display non-empty fields)
   const detailRows: { label: string; value: string }[] = [];
@@ -256,7 +313,7 @@ export function renderWelcomeEmailHtml(
       : "";
 
   const managerNextStep = managerName
-    ? `Your manager, <strong>${managerName}</strong>, will connect with you regarding your onboarding schedule, team introduction, and initial setup.`
+    ? `Your manager, <strong>${safeManagerName}</strong>, will connect with you regarding your onboarding schedule, team introduction, and initial setup.`
     : `Your team will connect with you regarding your onboarding schedule, team introduction, and initial setup.`;
 
   const welcomeMessageCallout = cleanedAiMessage
@@ -267,7 +324,7 @@ export function renderWelcomeEmailHtml(
        </div>`
     : `<div style="background-color: #eff6ff; border-left: 4px solid #2563eb; border-radius: 0 8px 8px 0; padding: 18px 20px; margin-bottom: 16px;">
         <p style="margin: 0; color: #1e40af; font-size: 14px; line-height: 1.6; font-style: italic;">
-          "We're excited to have you on board and look forward to seeing the impact you'll make at ${companyName}."
+          "We're excited to have you on board and look forward to seeing the impact you'll make at ${safeCompanyName}."
         </p>
        </div>`;
 
@@ -276,7 +333,7 @@ export function renderWelcomeEmailHtml(
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Welcome to ${companyName}</title>
+  <title>Welcome to ${safeCompanyName}</title>
 </head>
 <body style="margin:0;padding:0;background-color:#f1f5f9;font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;color:#1e293b;-webkit-font-smoothing:antialiased;">
   <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color:#f1f5f9;padding:40px 16px;">
@@ -288,13 +345,13 @@ export function renderWelcomeEmailHtml(
           <tr>
             <td style="padding: 40px 40px 24px 40px;">
               <h2 style="margin: 0 0 16px 0; color: #0f172a; font-size: 22px; font-weight: 700; line-height: 1.3;">
-                Welcome to the ${companyName} team, ${employeeName}! 🎉
+                Welcome to the ${safeCompanyName} team, ${safeEmployeeName}! 🎉
               </h2>
               <p style="margin: 0 0 16px 0; color: #334155; font-size: 15px; line-height: 1.6;">
-                Dear ${employeeName},
+                Dear ${safeEmployeeName},
               </p>
               <p style="margin: 0; color: #334155; font-size: 15px; line-height: 1.6;">
-                On behalf of the entire team at <strong>${companyName}</strong>, we are excited to welcome you as our new <strong>${jobTitle || "team member"}</strong>.
+                On behalf of the entire team at <strong>${safeCompanyName}</strong>, we are excited to welcome you as our new <strong>${safeJobTitle}</strong>.
               </p>
             </td>
           </tr>
@@ -327,12 +384,12 @@ export function renderWelcomeEmailHtml(
           <tr>
             <td style="padding: 0 40px 36px 40px;">
               <p style="margin: 0 0 16px 0; color: #0f172a; font-size: 15px; font-weight: 600;">
-                Welcome aboard, ${employeeName}! 🚀
+                Welcome aboard, ${safeEmployeeName}! 🚀
               </p>
               <p style="margin: 0; color: #475569; font-size: 14px; line-height: 1.5;">
                 Best regards,<br>
                 <strong style="color: #1e293b;">HR Assistant</strong><br>
-                <span style="color: #64748b;">${companyName}</span>
+                <span style="color: #64748b;">${safeCompanyName}</span>
               </p>
             </td>
           </tr>
@@ -341,7 +398,7 @@ export function renderWelcomeEmailHtml(
           <tr>
             <td style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 24px 40px; text-align: center;">
               <p style="margin: 0 0 4px 0; color: #64748b; font-size: 12px; font-weight: 500;">
-                © 2026 ${companyName}
+                © 2026 ${safeCompanyName}
               </p>
             </td>
           </tr>

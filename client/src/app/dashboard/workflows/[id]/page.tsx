@@ -282,64 +282,17 @@ export default function WorkflowBuilderPage() {
 
   const [isExecuteModalOpen, setIsExecuteModalOpen] = useState(false);
 
-  // Extract initial values from saved TRIGGER step config if available
-  const initialExecutionValues = useMemo<Partial<RuntimeTriggerPayload>>(() => {
+  // Use any saved trigger configuration as a starting payload, excluding trigger metadata.
+  const initialExecutionValues = useMemo<RuntimeTriggerPayload>(() => {
     const triggerStep = workflow?.steps?.find((s) => s.type === "TRIGGER");
     const triggerConfig = (triggerStep?.config as Record<string, unknown>) ?? {};
-    return {
-      employee_name:
-        typeof triggerConfig.employee_name === "string"
-          ? triggerConfig.employee_name
-          : typeof triggerConfig.name === "string"
-          ? triggerConfig.name
-          : "",
-      employee_email:
-        typeof triggerConfig.employee_email === "string"
-          ? triggerConfig.employee_email
-          : typeof triggerConfig.email === "string"
-          ? triggerConfig.email
-          : "",
-      job_title:
-        typeof triggerConfig.job_title === "string"
-          ? triggerConfig.job_title
-          : "",
-      department:
-        typeof triggerConfig.department === "string"
-          ? triggerConfig.department
-          : "",
-      manager_name:
-        typeof triggerConfig.manager_name === "string"
-          ? triggerConfig.manager_name
-          : typeof triggerConfig.manager === "string"
-          ? triggerConfig.manager
-          : typeof triggerConfig.reporting_manager === "string"
-          ? triggerConfig.reporting_manager
-          : "",
-      manager_email:
-        typeof triggerConfig.manager_email === "string"
-          ? triggerConfig.manager_email
-          : "",
-      start_date:
-        typeof triggerConfig.start_date === "string"
-          ? triggerConfig.start_date
-          : "",
-      company_name:
-        typeof triggerConfig.company_name === "string"
-          ? triggerConfig.company_name
-          : "",
-      company_address:
-        typeof triggerConfig.company_address === "string"
-          ? triggerConfig.company_address
-          : "",
-      company_phone:
-        typeof triggerConfig.company_phone === "string"
-          ? triggerConfig.company_phone
-          : "",
-      event:
-        typeof triggerConfig.event === "string"
-          ? triggerConfig.event
-          : "employee_added",
-    };
+    return Object.fromEntries(
+      Object.entries(triggerConfig).filter(
+        ([key, value]) =>
+          !["trigger_type", "form_id", "description"].includes(key) &&
+          value !== ""
+      )
+    );
   }, [workflow?.steps]);
 
   // Execute workflow
@@ -359,7 +312,7 @@ export default function WorkflowBuilderPage() {
 
     try {
       const response = await api.post(
-        `/executions/${workflow.id}`,
+        `/executions/${workflow.id}/queue`,
         payload
       );
 
@@ -372,7 +325,7 @@ export default function WorkflowBuilderPage() {
         throw new Error("Workflow execution failed on server.");
       }
 
-      setActionMessage("Workflow execution completed successfully.");
+      setActionMessage("Workflow execution was queued.");
       return response.data;
     } catch (err: unknown) {
       const errorMsg =

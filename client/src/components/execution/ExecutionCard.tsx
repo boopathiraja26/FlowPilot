@@ -8,7 +8,8 @@ import { ExecutionStatusBadge } from "./ExecutionStatusBadge";
 // Helpers
 // =========================================================
 
-function formatDateTime(isoDate: string): string {
+function formatDateTime(isoDate: string | null): string {
+  if (!isoDate) return "--";
   return new Date(isoDate).toLocaleString(undefined, {
     year: "numeric",
     month: "short",
@@ -18,8 +19,8 @@ function formatDateTime(isoDate: string): string {
   });
 }
 
-function formatDuration(startedAt: string, completedAt: string | null): string {
-  if (!completedAt) {
+function formatDuration(startedAt: string | null, completedAt: string | null): string {
+  if (!startedAt || !completedAt) {
     return "--";
   }
 
@@ -57,7 +58,9 @@ export function ExecutionCard({ execution }: ExecutionCardProps) {
             {execution.workflow?.title ?? "Untitled workflow"}
           </p>
           <p className="mt-1 text-xs text-slate-400 font-mono">
-            {formatDateTime(execution.startedAt)}
+            {execution.startedAt
+              ? formatDateTime(execution.startedAt)
+              : `Queued ${formatDateTime(execution.createdAt)}`}
           </p>
         </div>
         <ExecutionStatusBadge status={execution.status} />

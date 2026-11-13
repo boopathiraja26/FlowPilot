@@ -1,4 +1,5 @@
 export type WorkflowExecutionStatus =
+  | "QUEUED"
   | "RUNNING"
   | "COMPLETED"
   | "FAILED";
@@ -22,7 +23,16 @@ export interface WorkflowExecution {
     title: string;
   };
   status: WorkflowExecutionStatus;
-  startedAt: string;
+  startedAt: string | null;
   completedAt: string | null;
+  failureReason?: string | null;
+  createdAt: string;
   logs?: ExecutionLog[];
+}
+
+export interface ExecutionPagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
 }

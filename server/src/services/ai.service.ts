@@ -4,6 +4,7 @@ import prisma from "../lib/prisma";
 
 import { env } from "../config/env";
 import { ApiError } from "../middleware/errorHandler";
+import { resolveGeminiApiKey } from "./gemini.service";
 import {
   GeneratedWorkflow,
   GenerateWorkflowInput,
@@ -14,15 +15,7 @@ import {
 // Client setup
 // =========================================================
 
-const GEMINI_API_KEY = env.gemini.apiKey;
 const GEMINI_MODEL = env.gemini.model;
-
-if (!GEMINI_API_KEY) {
-  // eslint-disable-next-line no-console
-  console.warn("[ai.service] Missing GEMINI_API_KEY environment variable");
-}
-
-const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 
 // =========================================================
 // Prompt construction
@@ -82,9 +75,10 @@ function parseGeneratedWorkflow(rawText: string): GeneratedWorkflow {
 
   try {
     parsedJson = JSON.parse(jsonText);
-  } catch (err) {
+  } catch {
+    // Provider response may echo user data; do not write it to logs.
     // eslint-disable-next-line no-console
-    console.error("[ai.service] Failed to JSON.parse Gemini response:", jsonText, err);
+    console.error("[ai.service] Gemini returned invalid JSON.");
     throw new ApiError(502, "AI response was not valid JSON");
   }
 
@@ -111,12 +105,11 @@ function parseGeneratedWorkflow(rawText: string): GeneratedWorkflow {
 // =========================================================
 
 export async function generateWorkflowFromPrompt(
-  input: GenerateWorkflowInput
+  input: GenerateWorkflowInput,
+  userId: string
 ): Promise<GeneratedWorkflow> {
-  if (!GEMINI_API_KEY) {
-    throw new ApiError(500, "AI generation is not configured on this server");
-  }
-
+  const apiKey = await resolveGeminiApiKey(userId);
+  const ai = new GoogleGenAI({ apiKey });
   let response;
 
   try {
@@ -129,9 +122,7 @@ export async function generateWorkflowFromPrompt(
         temperature: 0.4,
       },
     });
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error("[ai.service] Gemini API call failed:", err);
+  } catch {
     throw new ApiError(502, "Failed to reach the AI provider. Please try again.");
   }
 

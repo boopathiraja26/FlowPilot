@@ -75,7 +75,7 @@ const HERO_DEMO_STEPS: DemoStep[] = [
     id: "hero-step-1",
     type: "TRIGGER",
     title: "Employee Added",
-    subtitle: "Webhook: hr.event.signup",
+    subtitle: "Sample JSON trigger input",
     icon: Zap,
     bg: "bg-emerald-950/70",
     text: "text-emerald-400",
@@ -87,7 +87,7 @@ const HERO_DEMO_STEPS: DemoStep[] = [
     id: "hero-step-2",
     type: "AI",
     title: "Generate Welcome",
-    subtitle: "Gemini 2.5 Flash: HR Assistant",
+    subtitle: "Gemini AI: HR Assistant",
     icon: Sparkles,
     bg: "bg-purple-950/70",
     text: "text-purple-400",
@@ -99,7 +99,7 @@ const HERO_DEMO_STEPS: DemoStep[] = [
     id: "hero-step-3",
     type: "EMAIL",
     title: "Send Welcome Email",
-    subtitle: "SMTP: alex.rivera@company.com",
+    subtitle: "SMTP: alex@example.com",
     icon: Mail,
     bg: "bg-blue-950/70",
     text: "text-blue-400",
@@ -111,7 +111,7 @@ const HERO_DEMO_STEPS: DemoStep[] = [
     id: "hero-step-4",
     type: "WEBHOOK",
     title: "Sync Team Portal",
-    subtitle: "POST: api.company.com/sync",
+    subtitle: "POST: api.example.com/sync",
     icon: Globe,
     bg: "bg-pink-950/70",
     text: "text-pink-400",
@@ -180,21 +180,26 @@ function HeroWorkflowDemo() {
             <div className="h-3 w-3 rounded-full bg-amber-500/80 shadow-[0_0_8px_rgba(245,158,11,0.4)]" />
             <div className="h-3 w-3 rounded-full bg-emerald-500/80 shadow-[0_0_8px_rgba(16,185,129,0.4)]" />
           </div>
-          <span className="font-mono text-xs font-semibold text-slate-400 ml-2 truncate">
-            pipeline_execution_live.flow
-          </span>
+          <div className="ml-2 min-w-0">
+            <span className="block truncate font-mono text-xs font-semibold text-slate-400">
+              sample_onboarding_pipeline.flow
+            </span>
+            <span className="block text-[10px] text-amber-300">
+              Illustrative animation — not a live workflow run
+            </span>
+          </div>
         </div>
 
         <div className="flex items-center gap-2">
           {activeStepIndex >= 0 && activeStepIndex < HERO_DEMO_STEPS.length ? (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-950/80 px-3 py-1 text-xs font-bold text-blue-400 border border-blue-500/30 shadow-[0_0_12px_-2px_rgba(59,130,246,0.35)]">
               <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-400" />
-              <span>Step {activeStepIndex + 1}: {HERO_DEMO_STEPS[activeStepIndex].title} Running...</span>
+              <span>Demo: {HERO_DEMO_STEPS[activeStepIndex].title} running</span>
             </span>
           ) : (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-950/80 px-3 py-1 text-xs font-bold text-emerald-400 border border-emerald-500/30 shadow-[0_0_12px_-2px_rgba(16,185,129,0.35)]">
               <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
-              <span>Pipeline Passed (100%)</span>
+              <span>Demo cycle complete</span>
             </span>
           )}
         </div>
@@ -332,44 +337,44 @@ const PIPELINE_NODES: PipelineNodeDetail[] = [
   {
     id: "node-trigger",
     type: "TRIGGER",
-    title: "Trigger Event",
-    tagline: "Webhook & Form Intake",
-    desc: "Captures incoming HTTP payloads, employee events, or manual form inputs to bootstrap execution context.",
+    title: "Trigger Input",
+    tagline: "Manual & Scheduled Runs",
+    desc: "Starts a manual or scheduled run with a generic JSON payload as execution context.",
     icon: Zap,
     color: "text-emerald-400",
     borderActive: "border-emerald-500/50 shadow-[0_0_25px_rgba(16,185,129,0.3)]",
     iconBg: "bg-emerald-950/80 text-emerald-400 border border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.3)]",
     badgeBg: "bg-emerald-950/60 text-emerald-400 border-emerald-500/30",
     glow: "rgba(16, 185, 129, 0.4)",
-    actionText: "Intake payload parsed",
+    actionText: "Example input parsed",
   },
   {
     id: "node-ai",
     type: "AI",
     title: "Gemini AI Step",
     tagline: "Contextual Resolution",
-    desc: "Contextual prompt generation using Gemini 2.5 Flash to write custom emails, summarize data, or analyze intent.",
+    desc: "Contextual prompt generation using the configured Gemini model for summaries, messages, and structured content.",
     icon: Sparkles,
     color: "text-purple-400",
     borderActive: "border-purple-500/50 shadow-[0_0_25px_rgba(168,85,247,0.3)]",
     iconBg: "bg-purple-950/80 text-purple-400 border border-purple-500/40 shadow-[0_0_12px_rgba(168,85,247,0.3)]",
     badgeBg: "bg-purple-950/60 text-purple-400 border-purple-500/30",
     glow: "rgba(168, 85, 247, 0.4)",
-    actionText: "Zero-shot inference",
+    actionText: "Example AI action",
   },
   {
     id: "node-email",
     type: "EMAIL",
     title: "SMTP Dispatch",
-    tagline: "IPv4 Transport",
-    desc: "Production IPv4 email transport with dynamic templating, fallback timeout resiliency, and delivery receipts.",
+    tagline: "Configured SMTP",
+    desc: "Sends templated email through SMTP credentials configured for the account or server.",
     icon: Mail,
     color: "text-blue-400",
     borderActive: "border-blue-500/50 shadow-[0_0_25px_rgba(59,130,246,0.3)]",
     iconBg: "bg-blue-950/80 text-blue-400 border border-blue-500/40 shadow-[0_0_12px_rgba(59,130,246,0.3)]",
     badgeBg: "bg-blue-950/60 text-blue-400 border-blue-500/30",
     glow: "rgba(59, 130, 246, 0.4)",
-    actionText: "SMTP 250 OK queued",
+    actionText: "Example: SMTP accepted",
   },
   {
     id: "node-delay",
@@ -397,7 +402,7 @@ const PIPELINE_NODES: PipelineNodeDetail[] = [
     iconBg: "bg-pink-950/80 text-pink-400 border border-pink-500/40 shadow-[0_0_12px_rgba(236,72,153,0.3)]",
     badgeBg: "bg-pink-950/60 text-pink-400 border-pink-500/30",
     glow: "rgba(236, 72, 153, 0.4)",
-    actionText: "HTTP 200 broadcast",
+    actionText: "Example: HTTP response",
   },
 ];
 
@@ -593,12 +598,12 @@ function AiAutomationShowcase() {
             )}
           </div>
 
-          <h4 className="mt-3 text-sm font-bold text-white">Gemini 2.5 Resolution</h4>
-          <p className="mt-1 text-[11px] text-purple-300 font-mono">latency: ~380ms</p>
+          <h4 className="mt-3 text-sm font-bold text-white">Example AI output</h4>
+          <p className="mt-1 text-[11px] text-purple-300 font-mono">illustrative only</p>
           
           <div className="mt-2.5 flex items-center gap-1.5 text-[10px] font-semibold text-slate-400 bg-purple-950/50 px-3 py-1 rounded-full border border-purple-500/20">
             <span className={`h-1.5 w-1.5 rounded-full ${isTyping ? "bg-amber-400 animate-ping" : "bg-emerald-400"}`} />
-            <span>{isTyping ? "Streaming tokens..." : "Zero-Shot Token Ready"}</span>
+            <span>{isTyping ? "Sample animation..." : "Sample complete"}</span>
           </div>
         </div>
 
@@ -606,9 +611,9 @@ function AiAutomationShowcase() {
         <div className="rounded-2xl border border-purple-500/30 bg-purple-950/30 p-5 shadow-[0_0_25px_rgba(168,85,247,0.15)] min-h-[170px] flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between pb-3 border-b border-purple-500/20">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-purple-300">Generated AI Output</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-purple-300">Illustrative AI Output</span>
               <span className="text-[10px] font-mono text-purple-300 bg-purple-900/60 px-2 py-0.5 rounded border border-purple-500/30">
-                {isTyping ? "Generating..." : "Ready"}
+                {isTyping ? "Animating..." : "Example"}
               </span>
             </div>
 
@@ -619,8 +624,8 @@ function AiAutomationShowcase() {
           </div>
 
           <div className="mt-3 pt-2 border-t border-purple-500/20 flex items-center justify-between text-[10px] font-mono text-purple-300/70">
-            <span>Tokens: 420 resolved</span>
-            <span>Temperature: 0.2</span>
+            <span>Sample content</span>
+            <span>No provider call</span>
           </div>
         </div>
       </div>
@@ -629,7 +634,7 @@ function AiAutomationShowcase() {
 }
 
 // =========================================================
-// 8. LIVE EXECUTION TIMELINE OBSERVABILITY
+// 8. ILLUSTRATIVE EXECUTION TIMELINE
 // =========================================================
 
 interface TimelineLogItem {
@@ -645,33 +650,33 @@ const TIMELINE_LOGS: TimelineLogItem[] = [
     time: "11:32:01.102",
     tag: "[TRIGGER]",
     tagColor: "text-emerald-400",
-    message: "Webhook received from hr.event.signup • payload validated",
+    message: "Example trigger payload accepted",
     latency: "42ms",
   },
   {
     time: "11:32:01.145",
     tag: "[AI_RESOLVE]",
     tagColor: "text-purple-400",
-    message: "Gemini 2.5 context resolved • welcome message generated",
+    message: "Example AI output generated from sample input",
     latency: "380ms",
   },
   {
     time: "11:32:01.525",
     tag: "[SMTP_EMAIL]",
     tagColor: "text-blue-400",
-    message: "IPv4 handshake complete • message delivered to alex.rivera@company.com",
+    message: "Example email accepted by the configured SMTP provider",
     latency: "290ms",
   },
   {
     time: "11:32:01.815",
     tag: "[WEBHOOK]",
     tagColor: "text-pink-400",
-    message: "POST https://api.company.com/sync • HTTP 200 OK",
+    message: "Example webhook response • HTTP 200",
     latency: "140ms",
   },
 ];
 
-function LiveExecutionTimeline() {
+function SampleExecutionTimeline() {
   const [sectionRef, isInView] = useInView({ threshold: 0.15 });
   const [visibleLogsCount, setVisibleLogsCount] = useState<number>(0);
 
@@ -696,14 +701,17 @@ function LiveExecutionTimeline() {
       <div className="flex items-center justify-between border-b border-white/[0.08] pb-4 mb-4">
         <div className="flex items-center gap-2">
           <Terminal className="h-4 w-4 text-blue-400" />
-          <span className="font-mono text-xs font-bold text-slate-200">execution_log_run_7f8a9b.log</span>
+          <span className="font-mono text-xs font-bold text-slate-200">sample_execution_log.example</span>
         </div>
         <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-950/80 px-2.5 py-0.5 text-[10px] font-bold text-emerald-400 border border-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.25)]">
           <Check className="h-3 w-3 stroke-[3]" />
-          <span>COMPLETED • 852ms total</span>
+          <span>EXAMPLE RESULT • illustrative timing</span>
         </span>
       </div>
 
+      <p className="mb-4 text-xs text-amber-200/90">
+        Sample events and timings only; this panel is not connected to execution records or provider responses.
+      </p>
       <div className="space-y-2.5 font-mono text-xs text-slate-300">
         {TIMELINE_LOGS.map((item, index) => {
           const isVisible = index < visibleLogsCount;
@@ -732,7 +740,7 @@ function LiveExecutionTimeline() {
 }
 
 // =========================================================
-// 10. REAL WORKFLOW SHOWCASE (Onboarding Engine)
+// 10. ILLUSTRATIVE WORKFLOW EXAMPLE (Onboarding)
 // =========================================================
 
 interface ShowcaseStepItem {
@@ -759,16 +767,16 @@ const ONBOARDING_STEPS: ShowcaseStepItem[] = [
     order: "01",
     type: "TRIGGER",
     title: "Employee Added",
-    subtitle: "hr.event.employee_added",
-    description: "Captures HR webhook event & parses employee profile",
-    payload: "alex.rivera@company.com",
+    subtitle: "Sample trigger input",
+    description: "Uses example employee data supplied as generic workflow input",
+    payload: "alex@example.com",
     icon: Zap,
     activeBorder: "border-emerald-500 ring-2 ring-emerald-500/40 shadow-[0_0_25px_rgba(16,185,129,0.3)]",
     iconBg: "bg-emerald-950/80 text-emerald-400 border border-emerald-500/40",
     badgeBg: "bg-emerald-950/70 text-emerald-400 border border-emerald-500/30",
     glowColor: "#10b981",
     logTag: "[TRIGGER]",
-    logMessage: "HR signup webhook captured • Alex Rivera (Lead Architect)",
+    logMessage: "Example employee input accepted • Alex Rivera (sample)",
     duration: "42ms",
   },
   {
@@ -776,7 +784,7 @@ const ONBOARDING_STEPS: ShowcaseStepItem[] = [
     order: "02",
     type: "AI AGENT",
     title: "Generate Welcome",
-    subtitle: "Gemini 2.5: Contextual Prompt",
+    subtitle: "Gemini AI: Contextual Prompt",
     description: "Generates personalized executive welcome letter & intro",
     payload: "Resolved prompt: 420 tokens",
     icon: Sparkles,
@@ -785,7 +793,7 @@ const ONBOARDING_STEPS: ShowcaseStepItem[] = [
     badgeBg: "bg-purple-950/70 text-purple-400 border border-purple-500/40",
     glowColor: "#a855f7",
     logTag: "[AI_AGENT]",
-    logMessage: "Gemini 2.5 Flash resolved contextual welcome email template",
+    logMessage: "Example AI output generated from sample input",
     duration: "380ms",
   },
   {
@@ -793,16 +801,16 @@ const ONBOARDING_STEPS: ShowcaseStepItem[] = [
     order: "03",
     type: "SMTP EMAIL",
     title: "Send Welcome Email",
-    subtitle: "IPv4 Relay: alex.rivera@company.com",
-    description: "Dispatches onboarding HTML packet with delivery confirmation",
-    payload: "SMTP 250 OK: Queued",
+    subtitle: "Configured SMTP: alex@example.com",
+    description: "Sends a templated email through the configured SMTP provider.",
+    payload: "Example: SMTP accepted",
     icon: Mail,
     activeBorder: "border-blue-500 ring-2 ring-blue-500/40 shadow-[0_0_25px_rgba(59,130,246,0.3)]",
     iconBg: "bg-blue-950/80 text-blue-400 border border-blue-500/40",
     badgeBg: "bg-blue-950/70 text-blue-400 border border-blue-500/30",
     glowColor: "#3b82f6",
     logTag: "[SMTP_EMAIL]",
-    logMessage: "Outbound welcome email delivered to alex.rivera@company.com",
+    logMessage: "Example email accepted by SMTP provider",
     duration: "290ms",
   },
   {
@@ -810,16 +818,16 @@ const ONBOARDING_STEPS: ShowcaseStepItem[] = [
     order: "04",
     type: "WEBHOOK SYNC",
     title: "Sync Team Portal",
-    subtitle: "POST: api.company.com/team/sync",
-    description: "Broadcasts active status to company directory & Slack",
-    payload: "HTTP 200 OK: Synced",
+    subtitle: "POST: api.example.com/team/sync",
+    description: "Sends an example HTTP request to a configured endpoint.",
+    payload: "Example: HTTP 200",
     icon: Globe,
     activeBorder: "border-pink-500 ring-2 ring-pink-500/40 shadow-[0_0_25px_rgba(236,72,153,0.3)]",
     iconBg: "bg-pink-950/80 text-pink-400 border border-pink-500/40",
     badgeBg: "bg-pink-950/70 text-pink-400 border border-pink-500/30",
     glowColor: "#ec4899",
     logTag: "[WEBHOOK]",
-    logMessage: "POST /api/team/sync HTTP 200 OK • Workspace synchronized",
+    logMessage: "Example webhook response • HTTP 200",
     duration: "140ms",
   },
 ];
@@ -880,18 +888,18 @@ function OnboardingWorkflowShowcase() {
         <div className="text-center max-w-3xl mx-auto">
           <div className="inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-950/60 px-3.5 py-1 text-xs font-bold text-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.25)] mb-3">
             <Activity className="h-3.5 w-3.5 text-blue-400" />
-            <span>REAL-WORLD AUTOMATION PIPELINE</span>
+            <span>ILLUSTRATIVE WORKFLOW EXAMPLE</span>
           </div>
 
           <h2 className="text-3xl font-black text-white tracking-tight sm:text-4xl lg:text-5xl">
-            Real Workflow:{" "}
+            Example Workflow:{" "}
             <span className="bg-gradient-to-r from-emerald-400 via-purple-300 to-blue-400 bg-clip-text text-transparent">
               Employee Onboarding
             </span>
           </h2>
 
           <p className="mt-4 text-sm text-slate-400 max-w-2xl mx-auto leading-relaxed">
-            Watch how FlowPilot coordinates trigger intake, Gemini AI resolution, SMTP email dispatch, and webhook synchronization in real time.
+            This animation uses sample data, simulated statuses, and sample timings; it is not a live workflow execution or proof of configured providers.
           </p>
         </div>
 
@@ -904,8 +912,8 @@ function OnboardingWorkflowShowcase() {
                 <Workflow className="h-4 w-4" />
               </div>
               <div>
-                <span className="text-xs font-bold text-white block">onboarding_pipeline_prod.v2</span>
-                <span className="text-[10px] font-mono text-slate-500">trigger: hr.webhook • 4 nodes</span>
+                <span className="text-xs font-bold text-white block">sample_onboarding_workflow</span>
+                <span className="text-[10px] font-mono text-slate-500">sample trigger input • 4 steps</span>
               </div>
             </div>
 
@@ -913,12 +921,12 @@ function OnboardingWorkflowShowcase() {
               {activeStepIndex >= 0 && activeStepIndex < ONBOARDING_STEPS.length ? (
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-950/80 px-3 py-1 text-xs font-bold text-blue-400 border border-blue-500/30 shadow-[0_0_15px_rgba(59,130,246,0.3)]">
                   <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-400" />
-                  <span>Step {activeStepIndex + 1}: {ONBOARDING_STEPS[activeStepIndex].title} Running...</span>
+                  <span>Demo: {ONBOARDING_STEPS[activeStepIndex].title} running</span>
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-950/80 px-3 py-1 text-xs font-bold text-emerald-400 border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.3)]">
                   <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
-                  <span>Workflow Execution Passed (100%)</span>
+                  <span>Demo cycle complete</span>
                 </span>
               )}
             </div>
@@ -1069,7 +1077,7 @@ function OnboardingWorkflowShowcase() {
                 <div className="flex items-center gap-2">
                   <Terminal className="h-4 w-4 text-blue-400" />
                   <span className="text-slate-200 font-bold text-[11px] uppercase tracking-wider">
-                    Pipeline Telemetry • live_onboarding_stream
+                    Sample Statuses • illustrative animation
                   </span>
                 </div>
                 <span className="text-[10px] text-slate-500 font-semibold">
@@ -1160,19 +1168,19 @@ export default function LandingPage() {
   const faqs = [
     {
       q: "What is FlowPilot?",
-      a: "FlowPilot is a high-performance SaaS workflow automation platform that enables developers and teams to orchestrate multi-step pipelines powered by Gemini AI, reliable SMTP email dispatch, custom HTTP webhooks, and granular delay timers.",
+      a: "FlowPilot is a workflow automation application for designing and running multi-step pipelines. Gemini and SMTP steps require provider credentials; executions are persisted by the configured server.",
     },
     {
       q: "What can I automate with FlowPilot?",
-      a: "You can automate employee onboarding, customer outreach, lead enrichment, webhook integrations, operational notifications, AI content generation, and background pipeline processing with real-time telemetry.",
+      a: "You can build workflows for onboarding, outreach, operational notifications, AI content generation, and HTTP integrations, then review their persisted execution status and logs.",
     },
     {
       q: "How does the AI step work?",
-      a: "The AI step resolves prompts dynamically using Google's Gemini 2.5 Flash model. It ingests variables and upstream step outputs from trigger events and generates context-aware text, emails, or structured payloads.",
+      a: "When Gemini credentials are configured, the AI step uses the selected model and can resolve prompts with trigger input and upstream step outputs.",
     },
     {
       q: "What workflow step types are supported?",
-      a: "FlowPilot natively supports 5 core step types: Trigger (webhook/payload intake), AI Assistant (Gemini generation), Email (SMTP IPv4 dispatch), Delay (timed execution pauses), and Webhook (HTTP POST/GET/PUT calls).",
+      a: "Workflows accept generic JSON trigger input and support AI, email, delay, and webhook steps. Inbound webhook triggers are not currently available.",
     },
     {
       q: "Can I use custom webhooks?",
@@ -1180,7 +1188,7 @@ export default function LandingPage() {
     },
     {
       q: "How are workflow executions monitored?",
-      a: "Every run is logged with millisecond duration tracking, step-by-step status badges (COMPLETED, RUNNING, FAILED), terminal logs, and live observability screens.",
+      a: "The authenticated dashboard shows persisted execution status and safe logs. The animated pipeline and log examples on this page are illustrative, not connected to execution records.",
     },
   ];
 
@@ -1275,7 +1283,7 @@ export default function LandingPage() {
 
           {/* Supporting text */}
           <p className="mx-auto mt-6 max-w-2xl text-base text-slate-400 leading-relaxed sm:text-lg animate-fade-up-d1">
-            Build end-to-end automated pipelines with Gemini AI content resolution, SMTP email dispatch, webhooks, and step-by-step execution tracking.
+            Design workflows with AI, email, and webhooks. Gemini and SMTP steps run after you configure provider credentials; execution status is tracked in your workspace.
           </p>
 
           {/* CTAs */}
@@ -1305,13 +1313,16 @@ export default function LandingPage() {
             </div>
             <div className="flex items-center gap-1.5">
               <Check className="h-4 w-4 text-emerald-400 stroke-[3]" />
-              <span>Gemini 2.5 Flash integrated</span>
+              <span>Gemini AI steps supported — configure credentials</span>
             </div>
             <div className="flex items-center gap-1.5">
               <Check className="h-4 w-4 text-emerald-400 stroke-[3]" />
-              <span>Production SMTP ready</span>
+              <span>SMTP email steps supported — configure credentials</span>
             </div>
           </div>
+          <p className="mt-5 text-center text-xs text-amber-200/90">
+            Illustrative content: workflow animations, sample outputs, statuses, and logs on this page are not live executions or connected provider results.
+          </p>
         </div>
 
         {/* 3. Animated Workflow Demo */}
@@ -1337,7 +1348,7 @@ export default function LandingPage() {
               How FlowPilot Executes Automations
             </h2>
             <p className="mt-3 text-sm text-slate-400 max-w-lg mx-auto">
-              From trigger payload to final webhook dispatch, orchestrate intelligent pipelines seamlessly.
+              Provide generic JSON input, configure the steps, then review persisted execution status and logs.
             </p>
           </div>
 
@@ -1346,7 +1357,7 @@ export default function LandingPage() {
               {
                 num: "01",
                 title: "Define Trigger",
-                desc: "Capture webhook events, forms, or runtime parameters in plain text to kick off the pipeline.",
+                desc: "Provide generic JSON input when manually starting a workflow or creating a schedule.",
                 icon: GitFork,
               },
               {
@@ -1358,7 +1369,7 @@ export default function LandingPage() {
               {
                 num: "03",
                 title: "Execute & Monitor",
-                desc: "Run pipeline executions with live step-by-step output tracking, duration logs, and status badges.",
+                desc: "Review persisted execution status and safe logs in the dashboard.",
                 icon: Activity,
               },
             ].map((step, idx) => {
@@ -1398,12 +1409,15 @@ export default function LandingPage() {
       <section id="step-types" className="py-24 border-t border-white/[0.08] bg-dark-950">
         <div className="mx-auto max-w-6xl px-6">
           <div className="text-center max-w-3xl mx-auto">
-            <span className="text-xs font-bold uppercase tracking-wider text-blue-400">Supported Nodes</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-blue-400">Workflow Building Blocks</span>
             <h2 className="mt-1 text-3xl font-black text-white tracking-tight sm:text-4xl">
-              5 Core Pipeline Step Types
+              Trigger Input + 4 Step Types
             </h2>
             <p className="mt-3 text-sm text-slate-400 max-w-lg mx-auto">
-              Every step is modular, strictly validated, and interoperable across your execution pipeline.
+              Start with generic JSON input, then sequence AI, email, delay, and webhook steps.
+            </p>
+            <p className="mt-2 text-xs text-amber-200/90">
+              The animated status labels below are examples, not results from a workflow execution.
             </p>
           </div>
 
@@ -1417,12 +1431,12 @@ export default function LandingPage() {
       <section id="ai-automation" className="py-24 border-t border-white/[0.08] bg-dark-900/40">
         <div className="mx-auto max-w-5xl px-6">
           <div className="text-center">
-            <span className="text-xs font-bold uppercase tracking-wider text-purple-400">Gemini 2.5 Flash Engine</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-purple-400">Gemini AI Integration</span>
             <h2 className="mt-1 text-3xl font-black text-white tracking-tight sm:text-4xl">
               Context-Aware AI Workflow Resolution
             </h2>
             <p className="mt-3 text-sm text-slate-400 max-w-xl mx-auto">
-              FlowPilot feeds upstream context and trigger parameters directly into Gemini AI to generate customized messages and structured actions.
+              When Gemini credentials are configured, workflow steps use the selected model with trigger and prior-step context.
             </p>
           </div>
 
@@ -1431,21 +1445,21 @@ export default function LandingPage() {
       </section>
 
       {/* ================================================= */}
-      {/* 7. LIVE EXECUTION OBSERVABILITY */}
+      {/* 7. EXECUTION HISTORY EXAMPLE */}
       {/* ================================================= */}
       <section className="py-24 border-t border-white/[0.08] bg-dark-950">
         <div className="mx-auto max-w-5xl px-6">
           <div className="text-center">
             <span className="text-xs font-bold uppercase tracking-wider text-blue-400">Observability & Logs</span>
             <h2 className="mt-1 text-3xl font-black text-white tracking-tight sm:text-4xl">
-              Real-Time Execution Monitoring
+              Execution History
             </h2>
             <p className="mt-3 text-sm text-slate-400 max-w-lg mx-auto">
-              Every step execution emits detailed logs, status codes, and timing metrics.
+              Actual run status and safe logs appear in your workspace after a configured workflow runs.
             </p>
           </div>
 
-          <LiveExecutionTimeline />
+          <SampleExecutionTimeline />
         </div>
       </section>
 
@@ -1466,7 +1480,7 @@ export default function LandingPage() {
               Supported Integrations
             </h2>
             <p className="mt-3 text-sm text-slate-400 max-w-lg mx-auto">
-              Production-ready primitives engineered directly into FlowPilot.
+              Provider steps require credentials configured in Integrations or the server environment.
             </p>
           </div>
 
@@ -1474,13 +1488,13 @@ export default function LandingPage() {
             {[
               {
                 title: "Google Gemini AI",
-                desc: "Contextual generation with Gemini 2.5 Flash for ultra-fast step resolution.",
+                desc: "AI workflow steps use the selected Gemini model when provider credentials are configured.",
                 icon: Sparkles,
                 badge: "AI Engine",
               },
               {
                 title: "SMTP Transport",
-                desc: "IPv4 resilient email transport with fallback support and delivery receipts.",
+                desc: "Email steps use SMTP credentials configured for your account or server environment.",
                 icon: Mail,
                 badge: "Email Relay",
               },
@@ -1492,7 +1506,7 @@ export default function LandingPage() {
               },
               {
                 title: "PostgreSQL & Prisma",
-                desc: "Reliable relational schema persistence with ACID workflow guarantees.",
+                desc: "Persists workflows and executions when the server is connected to its configured database.",
                 icon: Database,
                 badge: "Database",
               },
@@ -1562,7 +1576,7 @@ export default function LandingPage() {
               },
               {
                 title: "Execution Logging",
-                desc: "Complete audit trails with timestamps, step outputs, and error diagnostics.",
+                desc: "Persisted execution status and safe messages; step outputs and provider details are not exposed.",
                 icon: Terminal,
               },
               {
@@ -1630,8 +1644,8 @@ export default function LandingPage() {
               },
               {
                 icon: Mail,
-                title: "Reliable SMTP Transport",
-                desc: "Production-grade IPv4 email dispatch with timeout resiliency.",
+                title: "SMTP Email Steps",
+                desc: "Send templated email through SMTP configured for your account or server; delivery depends on the provider.",
               },
               {
                 icon: Globe,
@@ -1650,8 +1664,8 @@ export default function LandingPage() {
               },
               {
                 icon: Activity,
-                title: "Real-time Execution History",
-                desc: "Inspect step durations, status badges, and terminal output logs.",
+                title: "Execution History",
+                desc: "Review persisted execution statuses and safe logs for past runs.",
               },
             ].map((feature) => {
               const Icon = feature.icon;

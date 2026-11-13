@@ -50,3 +50,26 @@ export const loginSchema = z.object({
 });
 
 export type LoginInput = z.infer<typeof loginSchema>;
+
+export const profileUpdateSchema = z
+  .object({
+    name: nameField,
+    email: emailField,
+  })
+  .strict();
+
+export type ProfileUpdateInput = z.infer<typeof profileUpdateSchema>;
+
+export const changePasswordSchema = z
+  .object({
+    currentPassword: loginPasswordField,
+    newPassword: passwordField,
+    confirmNewPassword: z.string().min(1, "Please confirm your new password"),
+  })
+  .strict()
+  .refine((data) => data.newPassword === data.confirmNewPassword, {
+    message: "New passwords do not match",
+    path: ["confirmNewPassword"],
+  });
+
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;

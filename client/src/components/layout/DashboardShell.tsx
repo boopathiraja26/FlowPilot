@@ -4,11 +4,14 @@ import { ReactNode, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
+import { useUIStore } from "@/store/useUIStore";
 
 let isAuthVerifiedMemory = false;
 
 export function DashboardShell({ children }: { children: ReactNode }) {
   const router = useRouter();
+  const isSidebarOpen = useUIStore((state) => state.isSidebarOpen);
+  const setSidebarOpen = useUIStore((state) => state.setSidebarOpen);
   const [isAuthorized, setIsAuthorized] = useState<boolean>(() => {
     if (typeof window !== "undefined") {
       const token = localStorage.getItem("flowpilot_token");
@@ -36,6 +39,12 @@ export function DashboardShell({ children }: { children: ReactNode }) {
     setIsAuthorized(true);
   }, [router]);
 
+  useEffect(() => {
+    if (window.matchMedia("(max-width: 767px)").matches) {
+      setSidebarOpen(false);
+    }
+  }, [setSidebarOpen]);
+
   if (!isAuthorized) {
     return (
       <div className="flex min-h-screen w-full items-center justify-center bg-slate-50 font-sans">
@@ -49,6 +58,14 @@ export function DashboardShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-screen w-full max-w-full overflow-x-hidden bg-slate-50 text-slate-900 selection:bg-blue-600 selection:text-white font-sans">
+      {isSidebarOpen && (
+        <button
+          type="button"
+          aria-label="Close navigation menu"
+          onClick={() => setSidebarOpen(false)}
+          className="fixed inset-0 z-20 bg-slate-950/30 md:hidden"
+        />
+      )}
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col overflow-x-hidden">
         <Header />

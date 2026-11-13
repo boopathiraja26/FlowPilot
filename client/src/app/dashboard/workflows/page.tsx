@@ -9,12 +9,13 @@ import { WorkflowCard } from "@/components/workflow/WorkflowCard";
 import { CardSkeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { api } from "@/lib/api";
-import { Workflow } from "@/types/workflow";
+import { Workflow, WorkflowStatus } from "@/types/workflow";
 
 export default function WorkflowsPage() {
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
     let isCancelled = false;
@@ -62,8 +63,34 @@ export default function WorkflowsPage() {
       setWorkflows((prev) =>
         prev.filter((workflow) => workflow.id !== workflowId)
       );
-    } catch (error) {
-      alert("Failed to delete workflow.");
+    } catch {
+      setActionError("Failed to delete workflow.");
+    }
+  }
+
+  async function handleStatusChange(workflowId: string, status: WorkflowStatus) {
+    setActionError(null);
+    try {
+      const response = await api.put(`/workflows/${workflowId}`, { status });
+      const updatedWorkflow = response.data.data.workflow as Workflow;
+      setWorkflows((previous) =>
+        previous.map((workflow) =>
+          workflow.id === workflowId ? updatedWorkflow : workflow
+        )
+      );
+    } catch {
+      setActionError("Couldn't update workflow status. Please try again.");
+    }
+  }
+
+  async function handleDuplicate(workflowId: string) {
+    setActionError(null);
+    try {
+      const response = await api.post(`/workflows/${workflowId}/duplicate`);
+      const duplicate = response.data.data.workflow as Workflow;
+      setWorkflows((previous) => [duplicate, ...previous]);
+    } catch {
+      setActionError("Couldn't duplicate workflow. Please try again.");
     }
   }
 
@@ -95,6 +122,15 @@ export default function WorkflowsPage() {
             <span>Create Workflow</span>
           </Link>
         </div>
+
+        {actionError && (
+          <div
+            role="alert"
+            className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700"
+          >
+            {actionError}
+          </div>
+        )}
 
         {/* Dashboard Statistics Summary Cards */}
         {!isLoading && !error && workflows.length > 0 && (
@@ -165,7 +201,13 @@ export default function WorkflowsPage() {
         {!isLoading && !error && workflows.length > 0 && (
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 animate-fade-in">
             {workflows.map((workflow) => (
-              <WorkflowCard key={workflow.id} workflow={workflow} onDelete={handleDelete} />
+              <WorkflowCard
+                key={workflow.id}
+                workflow={workflow}
+                onDelete={handleDelete}
+                onDuplicate={handleDuplicate}
+                onStatusChange={handleStatusChange}
+              />
             ))}
           </div>
         )}

@@ -14,14 +14,29 @@ interface AccessTokenPayload {
   sub: string;
   email: string;
   role: string;
+  passwordVersion?: number;
 }
 
 function isAccessTokenPayload(payload: unknown): payload is AccessTokenPayload {
+  if (typeof payload !== "object" || payload === null) return false;
+  const tokenPayload = payload as {
+    sub?: unknown;
+    passwordVersion?: unknown;
+  };
   return (
-    typeof payload === "object" &&
-    payload !== null &&
-    typeof (payload as AccessTokenPayload).sub === "string"
+    typeof tokenPayload.sub === "string" &&
+    (tokenPayload.passwordVersion === undefined ||
+      (typeof tokenPayload.passwordVersion === "number" &&
+        Number.isInteger(tokenPayload.passwordVersion) &&
+        tokenPayload.passwordVersion >= 0))
   );
+}
+
+export function isPasswordVersionCurrent(
+  tokenVersion: number | undefined,
+  userVersion: number
+): boolean {
+  return (tokenVersion ?? 0) === userVersion;
 }
 
 // =========================================================
@@ -80,11 +95,16 @@ export async function requireAuth(
         id: true,
         name: true,
         email: true,
+        passwordVersion: true,
       },
     });
 
     if (!user) {
       throw new ApiError(401, "User no longer exists");
+    }
+
+    if (!isPasswordVersionCurrent(decoded.passwordVersion, user.passwordVersion)) {
+      throw new ApiError(401, "Invalid or expired token");
     }
 
     req.user = user;

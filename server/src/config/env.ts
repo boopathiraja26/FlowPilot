@@ -2,6 +2,16 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
+const integrationEncryptionKey = process.env.INTEGRATION_ENCRYPTION_KEY;
+if (
+  integrationEncryptionKey &&
+  !/^[0-9a-f]{64}$/i.test(integrationEncryptionKey)
+) {
+  throw new Error(
+    "INTEGRATION_ENCRYPTION_KEY must be exactly 64 hexadecimal characters."
+  );
+}
+
 function required(name: string, fallback?: string): string {
   const value = process.env[name] ?? fallback;
 
@@ -17,6 +27,8 @@ export const env = {
   nodeEnv: required("NODE_ENV", "development"),
 
   port: parseInt(required("PORT", "5000"), 10),
+  redisUrl: required("REDIS_URL", "redis://localhost:6379"),
+  integrationEncryptionKey,
 
   clientOrigin: required(
     "CLIENT_ORIGIN",

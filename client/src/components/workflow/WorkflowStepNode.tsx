@@ -102,6 +102,8 @@ function WorkflowStepNode({
 
   return (
     <div
+      role="group"
+      aria-label={`${step.name}, ${step.type.toLowerCase()} step ${step.stepOrder}`}
       className={`group relative w-72 rounded-2xl border bg-dark-900/95 p-4 shadow-card backdrop-blur-xl transition-all duration-150 cursor-grab active:cursor-grabbing select-none ${
         dragging
           ? "scale-[1.02] shadow-2xl border-blue-400/80 ring-2 ring-blue-500/50 z-50 opacity-95"

@@ -3,10 +3,12 @@ import { Request, Response } from "express";
 import { asyncHandler } from "../middleware/asyncHandler";
 import { ApiError } from "../middleware/errorHandler";
 import {
+  enqueueWorkflow,
   executeWorkflow,
   getExecution,
   getExecutions,
 } from "../services/execution.service";
+import { parseExecutionListQuery } from "../utils/executionQuery";
 
 // =========================================================
 // Helpers
@@ -42,6 +44,23 @@ export const execute = asyncHandler(async (req: Request, res: Response) => {
   });
 });
 
+export const enqueue = asyncHandler(async (req: Request, res: Response) => {
+  const userId = getUserId(req);
+  const execution = await enqueueWorkflow(
+    req.params.workflowId,
+    userId,
+    req.body
+  );
+
+  res.status(202).json({
+    success: true,
+    message: "Workflow execution queued.",
+    data: {
+      execution,
+    },
+  });
+});
+
 // =========================================================
 // GET /api/executions
 // =========================================================
@@ -49,12 +68,27 @@ export const execute = asyncHandler(async (req: Request, res: Response) => {
 export const findAll = asyncHandler(async (req: Request, res: Response) => {
   const userId = getUserId(req);
 
-  const executions = await getExecutions(userId);
+  const isPaginatedRequest = Object.keys(req.query).length > 0;
+  const parsedQuery = isPaginatedRequest
+    ? parseExecutionListQuery(req.query)
+    : null;
+  if (parsedQuery && !parsedQuery.success) {
+    throw new ApiError(
+      400,
+      "Invalid execution history query.",
+      parsedQuery.error.flatten().fieldErrors
+    );
+  }
+
+  const result = await getExecutions(userId, parsedQuery?.data);
+  const executions = Array.isArray(result) ? result : result.executions;
+  const pagination = Array.isArray(result) ? undefined : result.pagination;
 
   res.status(200).json({
     success: true,
     data: {
       executions,
+      ...(pagination ? { pagination } : {}),
     },
   });
 });

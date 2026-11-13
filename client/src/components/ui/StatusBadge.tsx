@@ -1,7 +1,7 @@
 import React from "react";
 import { CheckCircle2, AlertCircle, Loader2, Clock } from "lucide-react";
 
-export type ExecutionStatus = "COMPLETED" | "RUNNING" | "FAILED" | "PENDING" | "ACTIVE" | "DRAFT" | "ARCHIVED";
+export type ExecutionStatus = "QUEUED" | "COMPLETED" | "RUNNING" | "FAILED" | "PENDING" | "ACTIVE" | "DRAFT" | "ARCHIVED";
 
 interface StatusBadgeProps {
   status: ExecutionStatus | string;
@@ -35,6 +35,16 @@ export function StatusBadge({ status, className = "", showIcon = true }: StatusB
             <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-600"></span>
           </span>
           <span>Running</span>
+        </span>
+      );
+
+    case "QUEUED":
+      return (
+        <span
+          className={`inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700 ${className}`}
+        >
+          {showIcon && <Clock className="h-3.5 w-3.5 text-amber-600" />}
+          <span>Queued</span>
         </span>
       );
 

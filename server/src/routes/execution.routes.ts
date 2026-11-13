@@ -2,7 +2,8 @@ import { Router } from "express";
 
 import {
   execute,
- findAll,
+  enqueue,
+  findAll,
   findOne,
 } from "../controllers/execution.controller";
 
@@ -15,6 +16,9 @@ router.use(requireAuth);
 
 // Execute a workflow
 router.post("/:workflowId", execute);
+
+// Queue an execution for the separate background worker
+router.post("/:workflowId/queue", enqueue);
 
 // List all executions
 router.get("/", findAll);

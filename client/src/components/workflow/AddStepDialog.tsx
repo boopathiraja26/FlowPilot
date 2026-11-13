@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { WorkflowStepType } from "@/types/workflow";
 import { Zap, Sparkles, Mail, Clock, Globe, X, Plus } from "lucide-react";
+import { useDialogFocus } from "@/hooks/useDialogFocus";
 
 // =========================================================
 // Step type options
@@ -89,6 +90,7 @@ export function AddStepDialog({
   const [type, setType] = useState<WorkflowStepType>("TRIGGER");
   const [name, setName] = useState("");
   const [nameError, setNameError] = useState<string | null>(null);
+  const dialogRef = useDialogFocus<HTMLDivElement>(isOpen, onCancel);
 
   // Reset whenever dialog opens
   useEffect(() => {
@@ -118,22 +120,32 @@ export function AddStepDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4 backdrop-blur-sm animate-fade-in">
-      <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 sm:p-7 shadow-2xl animate-scale-in">
+    <div role="presentation" className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4 backdrop-blur-sm animate-fade-in">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="add-step-dialog-title"
+        aria-describedby="add-step-dialog-description"
+        tabIndex={-1}
+        className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 sm:p-7 shadow-2xl animate-scale-in"
+      >
         <div className="mb-5 flex items-start justify-between">
           <div>
-            <h2 className="text-base font-extrabold text-slate-900">
+            <h2 id="add-step-dialog-title" className="text-base font-extrabold text-slate-900">
               Add Workflow Step
             </h2>
 
-            <p className="mt-1 text-xs text-slate-500">
+            <p id="add-step-dialog-description" className="mt-1 text-xs text-slate-500">
               Select a step type and give your new pipeline node a name.
             </p>
           </div>
 
           <button
+            type="button"
             onClick={handleCancel}
-            className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+            className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            aria-label="Close add workflow step dialog"
           >
             <X className="h-4 w-4" />
           </button>
@@ -146,7 +158,7 @@ export function AddStepDialog({
               Step Type
             </p>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <div role="group" aria-label="Step type" className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {STEP_TYPE_OPTIONS.map((option) => {
                 const active = type === option.value;
                 const Icon = option.icon;
@@ -156,11 +168,12 @@ export function AddStepDialog({
                     key={option.value}
                     type="button"
                     onClick={() => setType(option.value)}
+                    aria-pressed={active}
                     className={`flex flex-col items-center gap-1.5 rounded-xl border p-3 text-xs font-semibold transition-all ${
                       active
                         ? `${option.activeBg} ${option.activeText} ${option.activeBorder}`
                         : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:border-slate-300 hover:text-slate-900"
-                    }`}
+                    } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500`}
                   >
                     <Icon className="h-4 w-4" />
                     <span>{option.label}</span>
@@ -184,6 +197,8 @@ export function AddStepDialog({
               type="text"
               value={name}
               placeholder="e.g. Send Welcome Email"
+              aria-invalid={Boolean(nameError)}
+              aria-describedby={nameError ? "step-name-error" : undefined}
               onChange={(e) => {
                 setName(e.target.value);
 
@@ -199,7 +214,7 @@ export function AddStepDialog({
             />
 
             {nameError && (
-              <p className="text-xs text-rose-600 font-medium">
+              <p id="step-name-error" role="alert" className="text-xs text-rose-600 font-medium">
                 • {nameError}
               </p>
             )}
@@ -211,7 +226,7 @@ export function AddStepDialog({
           <button
             type="button"
             onClick={handleCancel}
-            className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-colors shadow-sm active:scale-[0.98]"
+            className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-colors shadow-sm active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           >
             Cancel
           </button>
@@ -219,7 +234,7 @@ export function AddStepDialog({
           <button
             type="button"
             onClick={handleCreate}
-            className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-all hover:bg-blue-700 active:scale-[0.98]"
+            className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-all hover:bg-blue-700 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
           >
             <Plus className="h-4 w-4" />
             <span>Create Step</span>

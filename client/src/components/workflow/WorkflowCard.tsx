@@ -1,6 +1,15 @@
 import Link from "next/link";
-import { GitFork, Trash2, ArrowUpRight, Layers } from "lucide-react";
-import { Workflow } from "@/types/workflow";
+import {
+  Archive,
+  ArrowUpRight,
+  Copy,
+  GitFork,
+  Layers,
+  Power,
+  RotateCcw,
+  Trash2,
+} from "lucide-react";
+import { Workflow, WorkflowStatus } from "@/types/workflow";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 
 // =========================================================
@@ -22,13 +31,20 @@ function formatCreatedDate(isoDate: string): string {
 interface WorkflowCardProps {
   workflow: Workflow;
   onDelete: (workflowId: string) => void;
+  onDuplicate: (workflowId: string) => void;
+  onStatusChange: (workflowId: string, status: WorkflowStatus) => void;
 }
 
 // =========================================================
 // WorkflowCard Component
 // =========================================================
 
-export function WorkflowCard({ workflow, onDelete }: WorkflowCardProps) {
+export function WorkflowCard({
+  workflow,
+  onDelete,
+  onDuplicate,
+  onStatusChange,
+}: WorkflowCardProps) {
   const steps = workflow.steps ?? [];
   const stepCount = steps.length;
 
@@ -86,10 +102,56 @@ export function WorkflowCard({ workflow, onDelete }: WorkflowCardProps) {
           <span>Created {formatCreatedDate(workflow.createdAt)}</span>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {workflow.status === "ARCHIVED" ? (
+            <button
+              type="button"
+              onClick={() => onStatusChange(workflow.id, "DRAFT")}
+              className="rounded-xl border border-slate-200 bg-white p-2 text-slate-500 shadow-sm hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              title="Restore as draft"
+              aria-label={`Restore ${workflow.title} as draft`}
+            >
+              <RotateCcw className="h-4 w-4" />
+            </button>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() =>
+                  onStatusChange(
+                    workflow.id,
+                    workflow.status === "ACTIVE" ? "DRAFT" : "ACTIVE"
+                  )
+                }
+                className="rounded-xl border border-slate-200 bg-white p-2 text-slate-500 shadow-sm hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                title={workflow.status === "ACTIVE" ? "Deactivate workflow" : "Activate workflow"}
+                aria-label={`${workflow.status === "ACTIVE" ? "Deactivate" : "Activate"} ${workflow.title}`}
+              >
+                <Power className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => onStatusChange(workflow.id, "ARCHIVED")}
+                className="rounded-xl border border-slate-200 bg-white p-2 text-slate-500 shadow-sm hover:border-amber-200 hover:bg-amber-50 hover:text-amber-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                title="Archive workflow"
+                aria-label={`Archive ${workflow.title}`}
+              >
+                <Archive className="h-4 w-4" />
+              </button>
+            </>
+          )}
+          <button
+            type="button"
+            onClick={() => onDuplicate(workflow.id)}
+            className="rounded-xl border border-slate-200 bg-white p-2 text-slate-500 shadow-sm hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            title="Duplicate workflow"
+            aria-label={`Duplicate ${workflow.title}`}
+          >
+            <Copy className="h-4 w-4" />
+          </button>
           <Link
             href={`/dashboard/workflows/${workflow.id}`}
-            className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-bold text-white shadow-sm transition-all duration-150 hover:bg-blue-700 active:scale-[0.98]"
+            className="min-w-[7rem] flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-bold text-white shadow-sm transition-all duration-150 hover:bg-blue-700 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
           >
             <span>Open Builder</span>
             <ArrowUpRight className="h-3.5 w-3.5" />
@@ -98,8 +160,9 @@ export function WorkflowCard({ workflow, onDelete }: WorkflowCardProps) {
           <button
             type="button"
             onClick={() => onDelete(workflow.id)}
-            className="rounded-xl border border-slate-200 bg-white p-2 text-slate-400 shadow-sm transition-all duration-150 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 active:scale-[0.98]"
+            className="rounded-xl border border-slate-200 bg-white p-2 text-slate-400 shadow-sm transition-all duration-150 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
             title="Delete Workflow"
+            aria-label={`Delete ${workflow.title}`}
           >
             <Trash2 className="h-4 w-4" />
           </button>
