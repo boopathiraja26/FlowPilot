@@ -99,3 +99,21 @@ export const logout = asyncHandler(async (_req: Request, res: Response) => {
     message: "Logged out successfully",
   });
 });
+
+// =========================================================
+// GET /api/auth/me
+// =========================================================
+
+export const me = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user) {
+    throw new ApiError(401, "Authentication required");
+  }
+
+  res.status(200).json({
+    success: true,
+    message: "Session retrieved successfully",
+    data: {
+      user: req.user,
+    },
+  });
+});
