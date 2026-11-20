@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "FlowPilot",
-  description: "FlowPilot - project management, streamlined.",
+  title: "FlowPilot — AI-Powered Workflow Automation Platform",
+  description:
+    "Build powerful automations visually. Connect triggers, Gemini AI, emails, and webhooks to turn repetitive tasks into reliable workflows.",
 };
 
 export default function RootLayout({
@@ -12,8 +13,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className="antialiased">{children}</body>
+    <html lang="en" className="dark scroll-smooth">
+      <body className="antialiased bg-slate-950 text-slate-100 min-h-screen">
+        {children}
+      </body>
     </html>
   );
 }
