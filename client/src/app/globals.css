@@ -11,6 +11,15 @@
   --brand-primary-hover: #1d4ed8;
 }
 
+.dark {
+  --background: #020617;
+  --foreground: #f8fafc;
+  --card-bg: #0b101d;
+  --card-border: #1e293b;
+  --brand-primary: #3b82f6;
+  --brand-primary-hover: #2563eb;
+}
+
 body {
   color: var(--foreground);
   background: var(--background);
