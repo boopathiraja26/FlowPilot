@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Workflow, GitFork, Activity, PlusCircle, ChevronRight } from "lucide-react";
+import { GitFork, Activity, PlusCircle, ChevronRight } from "lucide-react";
+import { FlowPilotWordmark } from "@/components/landing/FlowPilotWordmark";
 import { useUIStore } from "@/store/useUIStore";
 
 const navItems = [
@@ -22,21 +23,13 @@ export function Sidebar() {
       }`}
     >
       {/* Brand Header */}
-      <div className="flex h-16 items-center gap-3 border-b border-slate-200 px-5 transition-all duration-150 group" title="FlowPilot Brand">
-        <Link href="/" className="flex items-center gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm transition-all duration-150 group-hover:bg-blue-700">
-            <Workflow className="h-5 w-5" />
-          </div>
-          {isSidebarOpen && (
-            <div className="flex flex-col">
-              <span className="text-base font-extrabold tracking-tight text-slate-900 group-hover:text-blue-600 transition-colors leading-none">
-                FlowPilot
-              </span>
-              <span className="text-[10px] font-bold tracking-wider text-blue-600 uppercase mt-0.5">
-                Automations
-              </span>
-            </div>
-          )}
+      <div className={`flex h-16 items-center gap-3 border-b border-slate-200 transition-all duration-150 group ${isSidebarOpen ? "px-5" : "px-1"}`} title="FlowPilot Brand">
+        <Link href="/" className="flex items-center">
+          <FlowPilotWordmark
+            theme="dark"
+            size="sm"
+            className={isSidebarOpen ? "" : "text-xs"}
+          />
         </Link>
       </div>
 

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ReactNode } from "react";
-import { Workflow, Zap, Sparkles, Mail, Globe, ArrowRight, ShieldCheck, CheckCircle2 } from "lucide-react";
+import { Zap, Sparkles, Mail, Globe, ShieldCheck } from "lucide-react";
 
 interface AuthLayoutProps {
   title: string;
@@ -24,11 +24,8 @@ export function AuthLayout({
   bottomQuestion,
   bottomLinkText,
   bottomLinkHref,
-  pageType = "login",
   children,
 }: AuthLayoutProps) {
-  const isRegister = pageType === "register";
-
   return (
     <div className="relative flex min-h-screen items-center justify-center bg-dark-950 bg-grid-pattern px-4 py-8 sm:py-12 overflow-hidden selection:bg-blue-600 selection:text-white">
       {/* Ambient background glow orbs */}
@@ -38,10 +35,10 @@ export function AuthLayout({
       <div className="relative z-10 mx-auto flex w-full max-w-5xl flex-col items-center justify-center lg:flex-row lg:items-center lg:justify-between lg:gap-12 xl:gap-16">
         
         {/* Left Side: Refined Integrated FlowPilot Workflow Visual (Desktop only) */}
-        <div className={`hidden lg:flex flex-col gap-6 w-[380px] xl:w-[420px] shrink-0 ${isRegister ? "opacity-95" : "opacity-90"} transition-opacity duration-300`}>
+        <div className="hidden lg:flex flex-col gap-6 w-[380px] xl:w-[420px] shrink-0 opacity-90">
           <div className="flex flex-col gap-2.5">
             <div className="inline-flex items-center gap-2 rounded-full bg-blue-950/60 px-3 py-1 text-[11px] font-bold text-blue-400 border border-blue-500/30 w-fit shadow-[0_0_12px_-2px_rgba(59,130,246,0.3)]">
-              <span className="flex h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+              <span className="flex h-2 w-2 rounded-full bg-blue-500" />
               <span>WORKFLOW AUTOMATION ENGINE</span>
             </div>
             <h2 className="text-2xl font-extrabold tracking-tight text-white leading-snug">
@@ -140,7 +137,7 @@ export function AuthLayout({
         </div>
 
         {/* Right Side: Compact Premium Authentication Card */}
-        <div className="w-full max-w-[420px] shrink-0 animate-scale-in">
+        <div className="w-full max-w-[420px] shrink-0">
           {/* Brand Header */}
           <div className="mb-6 text-center">
             <Link
@@ -149,9 +146,6 @@ export function AuthLayout({
               title="Return to FlowPilot Home"
               aria-label="FlowPilot Home"
             >
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-brand-glow transition-all duration-200 group-hover:shadow-brand-glow-lg">
-                <Workflow className="h-6 w-6" />
-              </div>
               <span className="text-2xl font-black tracking-tight text-white transition-colors group-hover:text-blue-400">
                 FlowPilot
               </span>

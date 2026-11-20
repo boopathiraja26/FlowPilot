@@ -1,22 +1,34 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Eye, EyeOff, AlertCircle, ArrowRight, ShieldCheck, Mail, Lock } from "lucide-react";
+import { Eye, EyeOff, AlertCircle } from "lucide-react";
 
 import { loginSchema, LoginFormValues } from "@/schemas/auth.schema";
-import { Input } from "@/components/ui/Input";
-import { Button } from "@/components/ui/Button";
 import { api } from "@/lib/api";
-import { AuthLayout } from "@/components/auth/AuthLayout";
+import { FlowPilotWordmark } from "@/components/landing/FlowPilotWordmark";
 
 export default function LoginPage() {
   const router = useRouter();
   const [serverError, setServerError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+
+  // Redirect already-authenticated users by validating token with server
+  useEffect(() => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("flowpilot_token") : null;
+    if (!token) return;
+    api
+      .get("/auth/me")
+      .then(() => router.replace("/dashboard/workflows"))
+      .catch(() => {
+        localStorage.removeItem("flowpilot_token");
+        localStorage.removeItem("flowpilot_user");
+      });
+  }, [router]);
 
   const {
     register,
@@ -28,9 +40,11 @@ export default function LoginPage() {
 
   const onSubmit = async (values: LoginFormValues) => {
     setServerError(null);
-
     try {
-      const response = await api.post("/auth/login", values);
+      const response = await api.post("/auth/login", {
+        email: values.email.trim(),
+        password: values.password,
+      });
       const data = response.data?.data;
 
       if (data?.accessToken && typeof window !== "undefined") {
@@ -40,7 +54,6 @@ export default function LoginPage() {
         localStorage.setItem("flowpilot_user", JSON.stringify(data.user));
       }
 
-      // Smooth transition to dashboard
       router.replace("/dashboard/workflows");
     } catch (error) {
       if (axios.isAxiosError(error)) {
@@ -55,72 +68,117 @@ export default function LoginPage() {
   };
 
   return (
-    <AuthLayout
-      title="Welcome back"
-      subtitle="Sign in to continue managing your intelligent workflows."
-      badgeText="Secure SaaS Workspace"
-      badgeIcon={<ShieldCheck className="h-3.5 w-3.5 text-blue-400" />}
-      bottomQuestion="Don't have an account?"
-      bottomLinkText="Create one"
-      bottomLinkHref="/register"
-      pageType="login"
-    >
-      {serverError && (
-        <div className="mb-5 flex items-start gap-2.5 rounded-2xl border border-rose-500/30 bg-rose-950/60 p-3.5 text-xs text-rose-300 animate-fade-in shadow-sm">
-          <AlertCircle className="h-4 w-4 shrink-0 text-rose-400 mt-0.5" />
-          <p className="font-semibold leading-relaxed">{serverError}</p>
-        </div>
-      )}
+    <div className="min-h-screen flex items-center justify-center bg-dark-950 px-4 py-8">
+      {/* Centered Card — identical dimensions and styling to register page */}
+      <div className="w-full max-w-md rounded-2xl bg-dark-900 border border-white/[0.07] p-8 shadow-xl">
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <div>
-          <Input
-            id="email"
-            type="email"
-            label="Email address"
-            placeholder="you@company.com"
-            icon={<Mail className="h-4 w-4 text-slate-500" />}
-            error={errors.email?.message}
-            {...register("email")}
-          />
+        {/* Text-only FlowPilot branding matching V3 landing page */}
+        <div className="mb-5 text-center">
+          <Link
+            href="/"
+            className="inline-block focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 rounded"
+            aria-label="FlowPilot Home"
+          >
+            <FlowPilotWordmark theme="light" size="lg" />
+          </Link>
         </div>
 
-        <div>
-          <Input
-            id="password"
-            type={showPassword ? "text" : "password"}
-            label="Password"
-            placeholder="••••••••"
-            icon={<Lock className="h-4 w-4 text-slate-500" />}
-            rightElement={
+        {/* Page heading */}
+        <h1 className="text-center text-2xl font-bold text-white mb-6">
+          Welcome Back
+        </h1>
+
+        {/* Server error */}
+        {serverError && (
+          <div className="mb-4 flex items-start gap-2.5 rounded-xl border border-rose-500/30 bg-rose-950/60 px-4 py-3 text-xs text-rose-300">
+            <AlertCircle className="h-4 w-4 shrink-0 text-rose-400 mt-0.5" />
+            <p className="font-semibold leading-relaxed">{serverError}</p>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-4">
+          {/* Email */}
+          <div>
+            <label
+              htmlFor="email"
+              className="mb-1.5 block text-[11px] font-bold uppercase tracking-widest text-slate-400"
+            >
+              Email Address
+            </label>
+            <input
+              id="email"
+              type="email"
+              autoComplete="email"
+              placeholder="Enter your email address"
+              className={`w-full rounded-xl border ${
+                errors.email
+                  ? "border-rose-500/60 bg-rose-950/20"
+                  : "border-white/[0.1] bg-dark-800"
+              } px-4 py-3 text-sm text-white placeholder-slate-500 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500`}
+              {...register("email")}
+            />
+            {errors.email && (
+              <p className="mt-1 text-xs text-rose-400">{errors.email.message}</p>
+            )}
+          </div>
+
+          {/* Password */}
+          <div>
+            <label
+              htmlFor="password"
+              className="mb-1.5 block text-[11px] font-bold uppercase tracking-widest text-slate-400"
+            >
+              Password
+            </label>
+            <div className="relative">
+              <input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                autoComplete="current-password"
+                placeholder="Enter your password"
+                className={`w-full rounded-xl border ${
+                  errors.password
+                    ? "border-rose-500/60 bg-rose-950/20"
+                    : "border-white/[0.1] bg-dark-800"
+                } px-4 py-3 pr-10 text-sm text-white placeholder-slate-500 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500`}
+                {...register("password")}
+              />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="p-1 text-slate-400 hover:text-slate-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 focus:outline-none"
                 aria-label={showPassword ? "Hide password" : "Show password"}
-                tabIndex={0}
+                tabIndex={-1}
               >
-                {showPassword ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
-            }
-            error={errors.password?.message}
-            {...register("password")}
-          />
-        </div>
+            </div>
+            {errors.password && (
+              <p className="mt-1 text-xs text-rose-400">{errors.password.message}</p>
+            )}
+          </div>
 
-        <Button
-          type="submit"
-          isLoading={isSubmitting}
-          className="w-full mt-2 py-3 text-xs font-bold uppercase tracking-wider"
-        >
-          <span>Sign in</span>
-          <ArrowRight className="h-4 w-4 ml-1" />
-        </Button>
-      </form>
-    </AuthLayout>
+          {/* Sign In button */}
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="mt-1 w-full rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-60 py-3 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+          >
+            {isSubmitting ? "Signing in…" : "Sign In"}
+          </button>
+        </form>
+
+        {/* Register link */}
+        <p className="mt-5 text-center text-xs text-slate-400">
+          Don&apos;t have an account?{" "}
+          <Link
+            href="/register"
+            className="font-semibold text-blue-400 hover:text-blue-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
+          >
+            Create one
+          </Link>
+        </p>
+      </div>
+    </div>
   );
 }
