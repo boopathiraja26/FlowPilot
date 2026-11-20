@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Workflow, ArrowRight, Menu, X } from "lucide-react";
+import { ArrowRight, Menu, X } from "lucide-react";
+import { FlowPilotWordmark } from "./FlowPilotWordmark";
 
 interface LandingNavbarProps {
   onReplayAnimation?: () => void;
@@ -32,55 +33,39 @@ export function LandingNavbar({ onReplayAnimation }: LandingNavbarProps) {
 
   const navLinks = [
     { label: "Features", href: "#features" },
-    { label: "How It Works", href: "#how-it-works" },
-    { label: "Interactive Pipeline", href: "#interactive-pipeline" },
+    { label: "How It Works", href: "#workflow-showcase" },
     { label: "Use Cases", href: "#use-cases" },
-    { label: "Reliability & Observability", href: "#reliability" },
   ];
 
   return (
     <header
       className={`sticky top-0 z-40 w-full transition-all duration-200 ${
         isScrolled
-          ? "border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md shadow-sm"
+          ? "border-b border-slate-200/80 bg-white/90 backdrop-blur-md shadow-xs"
           : "border-b border-transparent bg-transparent"
       }`}
     >
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        {/* Brand */}
-        <div className="flex items-center gap-6">
+        {/* Brand with Typography Wordmark */}
+        <div className="flex items-center gap-8">
           <Link
             href="/"
-            className="group flex items-center gap-2.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-lg p-1"
+            className="group flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] rounded-lg"
+            aria-label="FlowPilot Home"
           >
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white shadow-sm ring-1 ring-white/20 transition-transform duration-200 group-hover:scale-105">
-              <Workflow className="h-5 w-5" />
-            </div>
-            <div className="flex flex-col">
-              <div className="flex items-center gap-1.5">
-                <span className="text-base font-bold tracking-tight text-white">
-                  FlowPilot
-                </span>
-                <span className="rounded bg-blue-500/10 px-1.5 py-0.2 text-[10px] font-semibold text-blue-400 border border-blue-500/20">
-                  v2.4
-                </span>
-              </div>
-              <span className="text-[10px] text-slate-400 font-mono tracking-tight leading-none">
-                AI Workflow Engine
-              </span>
-            </div>
+            <FlowPilotWordmark theme="dark" size="md" />
           </Link>
 
           {/* Desktop Navigation */}
           <nav
             aria-label="Main Navigation"
-            className="hidden lg:flex items-center gap-6 text-xs font-medium text-slate-300"
+            className="hidden md:flex items-center gap-6 text-sm font-medium text-[#4A5E6D]"
           >
             {navLinks.map((link) => (
               <a
                 key={link.href}
                 href={link.href}
-                className="transition-colors hover:text-white"
+                className="transition-colors hover:text-[#17252F]"
               >
                 {link.label}
               </a>
@@ -88,12 +73,13 @@ export function LandingNavbar({ onReplayAnimation }: LandingNavbarProps) {
           </nav>
         </div>
 
-        {/* Right CTA cluster */}
+        {/* Right Action CTAs */}
         <div className="flex items-center gap-3">
           {onReplayAnimation && (
             <button
+              type="button"
               onClick={onReplayAnimation}
-              className="hidden md:inline-flex items-center gap-1.5 rounded-lg border border-slate-800 bg-slate-900/60 px-2.5 py-1.5 text-[11px] font-medium text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-200"
+              className="hidden md:inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-[#4A5E6D] shadow-xs transition-colors hover:bg-slate-50 hover:text-[#17252F]"
               title="Replay opening sequence"
             >
               <span>Replay Intro</span>
@@ -102,25 +88,28 @@ export function LandingNavbar({ onReplayAnimation }: LandingNavbarProps) {
 
           <Link
             href="/login"
-            className="hidden sm:inline-flex items-center justify-center rounded-lg px-3.5 py-2 text-xs font-semibold text-slate-300 transition-colors hover:bg-slate-900 hover:text-white focus-visible:ring-2 focus-visible:ring-blue-500"
+            prefetch={true}
+            className="hidden sm:inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold text-[#17252F] hover:text-[#0D9488] transition-colors focus-visible:ring-2 focus-visible:ring-[#0D9488]"
           >
             Sign In
           </Link>
 
           <Link
             href="/register"
-            className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition-all hover:bg-blue-500 hover:shadow active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+            prefetch={true}
+            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#0D9488] px-4 py-2 text-sm font-semibold text-white shadow-xs transition-all hover:bg-[#0F766E] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-[#0D9488]"
           >
-            <span>Start Building</span>
+            <span>Get Started</span>
             <ArrowRight className="h-3.5 w-3.5" />
           </Link>
 
-          {/* Mobile hamburger button */}
+          {/* Mobile Menu Hamburger */}
           <button
+            type="button"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
             aria-expanded={isMobileMenuOpen}
-            className="flex lg:hidden h-9 w-9 items-center justify-center rounded-lg border border-slate-800 bg-slate-900/60 text-slate-400 hover:text-white hover:bg-slate-800"
+            className="flex md:hidden h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:text-[#17252F] hover:bg-slate-50"
           >
             {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
@@ -129,30 +118,32 @@ export function LandingNavbar({ onReplayAnimation }: LandingNavbarProps) {
 
       {/* Mobile Drawer */}
       {isMobileMenuOpen && (
-        <div className="lg:hidden border-b border-slate-800 bg-slate-950/95 backdrop-blur-xl px-4 py-6 transition-all duration-200">
+        <div className="md:hidden border-b border-slate-200 bg-white/95 backdrop-blur-xl px-4 py-6 shadow-lg">
           <nav className="flex flex-col gap-3">
             {navLinks.map((link) => (
               <a
                 key={link.href}
                 href={link.href}
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="rounded-md px-3 py-2 text-sm font-medium text-slate-300 hover:bg-slate-900 hover:text-white"
+                className="rounded-lg px-3 py-2 text-sm font-medium text-[#4A5E6D] hover:bg-slate-100 hover:text-[#17252F]"
               >
                 {link.label}
               </a>
             ))}
-            <div className="mt-4 pt-4 border-t border-slate-800 flex flex-col gap-2">
+            <div className="mt-4 pt-4 border-t border-slate-200 flex flex-col gap-2">
               <Link
                 href="/login"
+                prefetch={true}
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="w-full text-center rounded-lg border border-slate-800 bg-slate-900/60 py-2.5 text-sm font-semibold text-slate-200"
+                className="w-full text-center rounded-xl border border-slate-200 bg-slate-50 py-2.5 text-sm font-semibold text-[#17252F]"
               >
                 Sign In
               </Link>
               <Link
                 href="/register"
+                prefetch={true}
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="w-full text-center rounded-lg bg-blue-600 py-2.5 text-sm font-semibold text-white shadow"
+                className="w-full text-center rounded-xl bg-[#0D9488] py-2.5 text-sm font-semibold text-white shadow-xs"
               >
                 Start Building Free
               </Link>

@@ -9,9 +9,9 @@ interface OpeningAnimationProps {
 }
 
 const NODES = [
-  { id: "trigger", label: "Trigger", sub: "Incoming Webhook", icon: Zap, color: "text-emerald-400", border: "border-emerald-500/40", bg: "bg-emerald-950/70" },
-  { id: "ai", label: "Gemini AI", sub: "Context Extraction", icon: Sparkles, color: "text-purple-400", border: "border-purple-500/40", bg: "bg-purple-950/70" },
-  { id: "email", label: "SMTP Email", sub: "Personalized Dispatch", icon: Mail, color: "text-blue-400", border: "border-blue-500/40", bg: "bg-blue-950/70" },
+  { id: "trigger", label: "Trigger", sub: "Incoming Webhook", icon: Zap, color: "text-teal-400", border: "border-teal-500/40", bg: "bg-teal-950/70" },
+  { id: "ai", label: "Gemini AI", sub: "Context Extraction", icon: Sparkles, color: "text-indigo-400", border: "border-indigo-500/40", bg: "bg-indigo-950/70" },
+  { id: "email", label: "SMTP Email", sub: "Personalized Dispatch", icon: Mail, color: "text-sky-400", border: "border-sky-500/40", bg: "bg-sky-950/70" },
   { id: "delay", label: "Smart Delay", sub: "15m Execution Buffer", icon: Clock, color: "text-amber-400", border: "border-amber-500/40", bg: "bg-amber-950/70" },
   { id: "webhook", label: "Outbound API", sub: "CRM & Slack Sync", icon: Globe, color: "text-rose-400", border: "border-rose-500/40", bg: "bg-rose-950/70" },
 ];
@@ -25,20 +25,19 @@ export function OpeningAnimation({ onComplete, forcePlay = false }: OpeningAnima
   const finish = useCallback(() => {
     setIsFadingOut(true);
     try {
-      sessionStorage.setItem("flowpilot_intro_seen", "true");
+      sessionStorage.setItem("flowpilot_intro_seen_v3", "true");
     } catch {
       // ignore storage access issues
     }
     const timer = setTimeout(() => {
       onComplete();
-    }, 350);
+    }, 300);
     return () => clearTimeout(timer);
   }, [onComplete]);
 
   useEffect(() => {
-    // Check user preference for reduced motion or previous view
     const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const alreadySeen = !forcePlay && sessionStorage.getItem("flowpilot_intro_seen") === "true";
+    const alreadySeen = !forcePlay && sessionStorage.getItem("flowpilot_intro_seen_v3") === "true";
 
     if (prefersReducedMotion || alreadySeen) {
       onComplete();
@@ -47,22 +46,14 @@ export function OpeningAnimation({ onComplete, forcePlay = false }: OpeningAnima
 
     setHasStarted(true);
 
-    // Sequence timing
-    // 0ms: step 0 (Trigger)
-    // 350ms: step 1 (AI)
-    // 700ms: step 2 (Email)
-    // 1050ms: step 3 (Delay)
-    // 1400ms: step 4 (Webhook)
-    // 1750ms: pulse wave through graph
-    // 2100ms: transition out
-    const t1 = setTimeout(() => setActiveStep(1), 350);
-    const t2 = setTimeout(() => setActiveStep(2), 700);
-    const t3 = setTimeout(() => setActiveStep(3), 1050);
-    const t4 = setTimeout(() => setActiveStep(4), 1400);
-    const tPulse = setTimeout(() => setPulseActive(true), 1700);
+    const t1 = setTimeout(() => setActiveStep(1), 300);
+    const t2 = setTimeout(() => setActiveStep(2), 600);
+    const t3 = setTimeout(() => setActiveStep(3), 900);
+    const t4 = setTimeout(() => setActiveStep(4), 1200);
+    const tPulse = setTimeout(() => setPulseActive(true), 1500);
     const tEnd = setTimeout(() => {
       finish();
-    }, 2200);
+    }, 2000);
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -89,29 +80,30 @@ export function OpeningAnimation({ onComplete, forcePlay = false }: OpeningAnima
   return (
     <div
       aria-label="FlowPilot Opening Sequence"
-      className={`fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-950 px-4 transition-opacity duration-300 ${
+      className={`fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#101C2C] px-4 transition-opacity duration-300 ${
         isFadingOut ? "opacity-0 pointer-events-none" : "opacity-100"
       }`}
     >
       {/* Subtle background grid */}
-      <div className="absolute inset-0 bg-grid-pattern opacity-10 pointer-events-none" />
+      <div className="absolute inset-0 bg-grid-dark opacity-20 pointer-events-none" />
 
       {/* Skip button */}
       <button
+        type="button"
         onClick={finish}
-        className="absolute top-6 right-6 inline-flex items-center gap-1.5 rounded-full border border-slate-800 bg-slate-900/80 px-3.5 py-1.5 text-xs font-medium text-slate-400 backdrop-blur-md transition-colors hover:border-slate-700 hover:text-slate-200"
+        className="absolute top-6 right-6 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3.5 py-1.5 text-xs font-medium text-slate-300 backdrop-blur-md transition-colors hover:border-white/20 hover:text-white"
       >
         <span>Skip</span>
-        <kbd className="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-300 font-mono">Esc</kbd>
+        <kbd className="rounded bg-black/40 px-1.5 py-0.5 text-[10px] text-slate-400 font-mono">Esc</kbd>
       </button>
 
       <div className="relative mx-auto flex max-w-4xl flex-col items-center text-center">
         {/* Brand mark */}
-        <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-slate-800/80 bg-slate-900/60 px-3 py-1 text-xs text-slate-300 shadow-sm">
-          <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
-          <span className="font-semibold text-slate-200">FlowPilot</span>
+        <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-teal-500/30 bg-teal-500/10 px-3.5 py-1 text-xs text-teal-300 shadow-sm font-mono">
+          <span className="h-1.5 w-1.5 rounded-full bg-teal-400 animate-pulse" />
+          <span className="font-semibold">FlowPilot</span>
           <span className="text-slate-500">•</span>
-          <span className="text-slate-400">Sequential Execution Engine</span>
+          <span className="text-slate-300">Sequential Execution Engine</span>
         </div>
 
         <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white mb-8">
@@ -132,9 +124,9 @@ export function OpeningAnimation({ onComplete, forcePlay = false }: OpeningAnima
                   className={`flex items-center gap-2.5 rounded-xl border px-3 py-2.5 backdrop-blur-md transition-all duration-300 ${
                     isVisible
                       ? `${node.border} ${node.bg} scale-100 opacity-100 shadow-lg`
-                      : "border-slate-800/40 bg-slate-900/30 scale-95 opacity-25"
-                  } ${isCurrent ? "ring-2 ring-blue-500/30" : ""} ${
-                    pulseActive ? "ring-1 ring-blue-400/50" : ""
+                      : "border-white/5 bg-white/[0.02] scale-95 opacity-25"
+                  } ${isCurrent ? "ring-2 ring-teal-500/40" : ""} ${
+                    pulseActive ? "ring-1 ring-teal-400/50" : ""
                   }`}
                 >
                   <div
@@ -145,7 +137,7 @@ export function OpeningAnimation({ onComplete, forcePlay = false }: OpeningAnima
                   <div className="text-left min-w-[90px]">
                     <div className="text-xs font-semibold text-white leading-tight flex items-center gap-1">
                       {node.label}
-                      {isVisible && <CheckCircle2 className="h-3 w-3 text-emerald-400" />}
+                      {isVisible && <CheckCircle2 className="h-3 w-3 text-teal-400" />}
                     </div>
                     <div className="text-[10px] text-slate-400 font-mono leading-tight truncate">
                       {node.sub}
@@ -156,16 +148,16 @@ export function OpeningAnimation({ onComplete, forcePlay = false }: OpeningAnima
                 {/* Connecting arrow / line between nodes (hidden on last item) */}
                 {idx < NODES.length - 1 && (
                   <div className="hidden sm:flex items-center justify-center px-1">
-                    <div className="relative h-0.5 w-6 sm:w-8 bg-slate-800 overflow-hidden rounded-full">
+                    <div className="relative h-0.5 w-6 sm:w-8 bg-white/10 overflow-hidden rounded-full">
                       <div
-                        className={`absolute inset-0 bg-blue-500 transition-all duration-300 ${
+                        className={`absolute inset-0 bg-teal-400 transition-all duration-300 ${
                           activeStep > idx ? "w-full" : "w-0"
                         }`}
                       />
                     </div>
                     <ArrowRight
                       className={`h-3 w-3 transition-colors ${
-                        activeStep > idx ? "text-blue-400" : "text-slate-700"
+                        activeStep > idx ? "text-teal-400" : "text-slate-600"
                       }`}
                     />
                   </div>
@@ -178,8 +170,8 @@ export function OpeningAnimation({ onComplete, forcePlay = false }: OpeningAnima
         {/* Status text */}
         <div className="mt-8 flex items-center gap-2 text-xs text-slate-400 font-mono">
           <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-teal-500"></span>
           </span>
           <span>
             {activeStep < 4

@@ -1,12 +1,9 @@
 "use client";
 
-import { useState } from "react";
 import {
   Users,
   Target,
   UserCheck,
-  BellRing,
-  ArrowRight,
   Zap,
   Sparkles,
   Mail,
@@ -16,261 +13,153 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
-interface UseCase {
-  id: string;
-  tabTitle: string;
-  badge: string;
-  icon: typeof Users;
-  title: string;
-  problem: string;
-  solution: string;
-  pipeline: Array<{
-    type: "TRIGGER" | "AI" | "EMAIL" | "DELAY" | "WEBHOOK";
-    label: string;
-    detail: string;
-    icon: typeof Zap;
-  }>;
-  payloadPreview: string;
-  metrics: string[];
-}
-
-const USE_CASES: UseCase[] = [
-  {
-    id: "lead-processing",
-    tabTitle: "Lead Processing & Routing",
-    badge: "Revenue & Sales Operations",
-    icon: Target,
-    title: "Instant Inbound Qualification & Executive SDR Routing",
-    problem:
-      "Leads sit in CRM inboxes for hours before manual review, causing inbound conversion rates to plummet.",
-    solution:
-      "FlowPilot triggers on lead submission, queries Gemini to score customer intent & company domain, fires a personalized welcome email, and dispatches high-priority Slack notifications to the appropriate account rep.",
-    pipeline: [
-      { type: "TRIGGER", label: "Form Submission", detail: "POST /lead.new", icon: Zap },
-      { type: "AI", label: "Gemini 2.5 Flash", detail: "Intent & Tier Scoring", icon: Sparkles },
-      { type: "EMAIL", label: "SMTP Dispatch", detail: "Executive Introduction", icon: Mail },
-      { type: "WEBHOOK", label: "Salesforce / Slack", detail: "Real-time rep routing", icon: Globe },
-    ],
-    payloadPreview: `{
-  "lead_email": "cto@fintech-scaleup.io",
-  "ai_intent_tier": "Enterprise Tier 1",
-  "intent_score": 0.96,
-  "assigned_rep": "david.enterprise@flowpilot.io",
-  "dispatched_at": "11:02:14 UTC"
-}`,
-    metrics: ["< 450ms Total Run Time", "3.2x Faster Rep Response", "100% Inbound Auditability"],
-  },
-  {
-    id: "employee-onboarding",
-    tabTitle: "Employee Onboarding",
-    badge: "People & HR Operations",
-    icon: Users,
-    title: "Zero-Touch Day-One Provisioning & Welcome Orchestration",
-    problem:
-      "Manual coordination between HR, IT, and managers results in delayed laptop provisioning, missing credentials, and frustrated new hires.",
-    solution:
-      "When a new hire is confirmed in your HRIS, FlowPilot orchestrates the entire onboarding lifecycle: generates role-specific documentation with Gemini, emails credentials, waits for system provisioning, and notifies team channels.",
-    pipeline: [
-      { type: "TRIGGER", label: "HRIS Webhook", detail: "hr.candidate.hired", icon: Zap },
-      { type: "AI", label: "Gemini 2.5 Flash", detail: "Role Playbook Generator", icon: Sparkles },
-      { type: "EMAIL", label: "SMTP Delivery", detail: "Day 1 Welcome Packet", icon: Mail },
-      { type: "DELAY", label: "Smart Delay", detail: "2-hour buffer for setup", icon: Clock },
-      { type: "WEBHOOK", label: "Workspace API", detail: "Provision Slack & Google", icon: Globe },
-    ],
-    payloadPreview: `{
-  "candidate": "Elena Rostova",
-  "department": "Core Machine Learning",
-  "playbook_generated": true,
-  "credentials_dispatched": true,
-  "status": "onboarding_active"
-}`,
-    metrics: ["0 Manual Checklists", "100% On-Time IT Setup", "Personalized Day 1 Schedule"],
-  },
-  {
-    id: "customer-registration",
-    tabTitle: "Customer Activation",
-    badge: "Product Growth & Lifecycle",
-    icon: UserCheck,
-    title: "Context-Aware User Activation & Feature Guidance",
-    problem:
-      "Standard marketing drips send static emails that ignore what the customer actually signed up to build.",
-    solution:
-      "FlowPilot ingests sign-up metadata, runs an AI summary of user intent, delivers tailored instructions, and logs telemetry events into your product analytics pipeline.",
-    pipeline: [
-      { type: "TRIGGER", label: "App Signup Event", detail: "user.registered", icon: Zap },
-      { type: "AI", label: "Gemini 2.5 Flash", detail: "Use-case Tailored Onboarding", icon: Sparkles },
-      { type: "EMAIL", label: "SMTP Delivery", detail: "Tailored Starter Guide", icon: Mail },
-      { type: "WEBHOOK", label: "Mixpanel / Segment", detail: "Track lifecycle event", icon: Globe },
-    ],
-    payloadPreview: `{
-  "user_id": "usr_99120",
-  "use_case_selected": "ecommerce_webhooks",
-  "tailored_templates_sent": ["stripe_refunds", "shopify_order"],
-  "activation_milestone": "step_1_completed"
-}`,
-    metrics: ["+28% Day-7 Retention", "Real-Time Ingestion", "Deterministic Step Retries"],
-  },
-  {
-    id: "business-notifications",
-    tabTitle: "Incident & Business Alerts",
-    badge: "Site Reliability & Ops",
-    icon: BellRing,
-    title: "Automated Incident Escalation & Executive Summaries",
-    problem:
-      "Engineering monitors trigger alert storms that overwhelm teams without clear context or root-cause classification.",
-    solution:
-      "FlowPilot ingests system alerts, uses Gemini to categorize root causes and urgency, escalates via email to the primary on-call engineer, and updates status dashboards via webhook.",
-    pipeline: [
-      { type: "TRIGGER", label: "Monitoring Webhook", detail: "POST /alerts/ingest", icon: Zap },
-      { type: "AI", label: "Gemini 2.5 Flash", detail: "Root Cause Classification", icon: Sparkles },
-      { type: "EMAIL", label: "SMTP Urgent Dispatch", detail: "On-Call Emergency Alert", icon: Mail },
-      { type: "WEBHOOK", label: "Status Page API", detail: "Incident Banner Sync", icon: Globe },
-    ],
-    payloadPreview: `{
-  "alert": "db_replica_lag_high",
-  "severity": "P1",
-  "ai_analysis": "Replication lag exceeded 45s on eu-central read replica.",
-  "escalated_to": "oncall-infra@flowpilot.io",
-  "incident_state": "acknowledged"
-}`,
-    metrics: ["Sub-second Alert Relay", "Automated Triage", "Audit Log Trail"],
-  },
-];
-
 export function UseCasesSection() {
-  const [selectedCaseId, setSelectedCaseId] = useState("lead-processing");
-  const activeCase = USE_CASES.find((c) => c.id === selectedCaseId) || USE_CASES[0];
-
   return (
-    <section id="use-cases" className="relative py-24 bg-slate-950">
+    <section id="use-cases" className="relative py-24 bg-white border-t border-slate-200">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="mx-auto max-w-3xl text-center mb-16">
-          <div className="inline-flex items-center gap-1.5 rounded-full border border-blue-500/20 bg-blue-500/10 px-3 py-1 text-xs font-semibold text-blue-400 mb-3">
-            <span>Versatile Applications</span>
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-teal-200 bg-[#E9F5F1] px-3.5 py-1 text-xs font-semibold text-[#0D9488] mb-3 font-mono">
+            <span>Real-World Automation</span>
           </div>
-          <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-white">
-            Built for any multi-step business process
+          <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-[#17252F] leading-tight">
+            How modern teams automate with FlowPilot
           </h2>
-          <p className="mt-4 text-base sm:text-lg text-slate-400">
-            From inbound lead routing to automated employee setup and system incident response, FlowPilot
-            powers mission-critical workflows across your entire organization.
+          <p className="mt-4 text-base sm:text-lg text-[#4A5E6D]">
+            From employee onboarding to inbound lead triage, see how FlowPilot connects your tools into
+            resilient, automated operations.
           </p>
         </div>
 
-        {/* Tab Navigation */}
-        <div className="flex flex-wrap items-center justify-center gap-2 mb-10">
-          {USE_CASES.map((uc) => {
-            const Icon = uc.icon;
-            const isSelected = uc.id === selectedCaseId;
-
-            return (
-              <button
-                key={uc.id}
-                onClick={() => setSelectedCaseId(uc.id)}
-                className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs sm:text-sm font-semibold transition-all ${
-                  isSelected
-                    ? "bg-blue-600 text-white shadow-sm ring-1 ring-blue-500"
-                    : "bg-slate-900/60 text-slate-400 border border-slate-800 hover:bg-slate-900 hover:text-white"
-                }`}
-              >
-                <Icon className="h-4 w-4" />
-                <span>{uc.tabTitle}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Active Use Case Deep Dive */}
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 sm:p-8 lg:p-10 backdrop-blur-md">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            {/* Left 6 cols: Problem, Solution & Metrics */}
-            <div className="lg:col-span-6 flex flex-col justify-between h-full">
+        {/* Featured Case: Employee Onboarding Pipeline */}
+        <div className="rounded-2xl border border-slate-200 bg-[#F8FAF8] p-6 sm:p-8 lg:p-10 shadow-xs">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
+            {/* Left 6 cols: Scenario Context */}
+            <div className="lg:col-span-6 flex flex-col justify-between h-full space-y-6">
               <div>
-                <span className="rounded-full bg-slate-800 px-3 py-1 text-xs font-mono font-medium text-blue-400 border border-slate-700">
-                  {activeCase.badge}
-                </span>
+                <div className="inline-flex items-center gap-2 rounded-full bg-white border border-slate-200 px-3 py-1 text-xs font-mono font-medium text-[#0D9488] shadow-xs">
+                  <Users className="h-3.5 w-3.5" />
+                  <span>People Operations Playbook</span>
+                </div>
 
-                <h3 className="mt-4 text-2xl sm:text-3xl font-bold text-white tracking-tight">
-                  {activeCase.title}
+                <h3 className="mt-4 text-2xl sm:text-3xl font-bold text-[#17252F] tracking-tight">
+                  Zero-Touch Day-One Employee Onboarding
                 </h3>
 
-                <div className="mt-6 space-y-4">
-                  <div className="rounded-xl border border-slate-800/80 bg-slate-950/60 p-4">
-                    <div className="text-xs font-mono uppercase text-rose-400 font-semibold mb-1">
-                      The Operational Bottleneck
+                <p className="mt-3 text-sm sm:text-base text-[#4A5E6D] leading-relaxed">
+                  When a new hire accepts an offer, FlowPilot coordinates the entire cross-departmental lifecycle:
+                  generates customized onboarding schedules via Gemini, sends welcome guides, buffers for IT setup,
+                  and provisions workspace accounts.
+                </p>
+
+                <div className="mt-6 space-y-3.5">
+                  <div className="rounded-xl border border-rose-200 bg-rose-50/50 p-4">
+                    <div className="text-xs font-mono uppercase text-rose-700 font-semibold mb-1">
+                      The Manual Problem
                     </div>
-                    <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-                      {activeCase.problem}
+                    <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">
+                      HR managers spend 3+ hours per hire copy-pasting emails, creating calendar invites, and manually nudging IT for software credentials.
                     </p>
                   </div>
 
-                  <div className="rounded-xl border border-slate-800/80 bg-slate-950/60 p-4">
-                    <div className="text-xs font-mono uppercase text-emerald-400 font-semibold mb-1">
-                      The FlowPilot Solution
+                  <div className="rounded-xl border border-teal-200 bg-teal-50/50 p-4">
+                    <div className="text-xs font-mono uppercase text-teal-800 font-semibold mb-1">
+                      The FlowPilot Automation
                     </div>
-                    <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-                      {activeCase.solution}
+                    <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">
+                      A single HRIS webhook triggers Gemini AI to synthesize role requirements, dispatches personalized welcome instructions, and alerts team channels.
                     </p>
                   </div>
                 </div>
               </div>
 
               {/* Metrics */}
-              <div className="mt-6 pt-6 border-t border-slate-800 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {activeCase.metrics.map((metric, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center gap-1.5 text-xs font-mono text-slate-300 font-medium"
-                  >
-                    <CheckCircle2 className="h-3.5 w-3.5 text-blue-400 shrink-0" />
-                    <span>{metric}</span>
-                  </div>
-                ))}
+              <div className="pt-4 border-t border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="flex items-center gap-2 text-xs font-mono text-[#17252F]">
+                  <CheckCircle2 className="h-4 w-4 text-[#0D9488] shrink-0" />
+                  <span>0 Manual emails</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs font-mono text-[#17252F]">
+                  <CheckCircle2 className="h-4 w-4 text-[#0D9488] shrink-0" />
+                  <span>100% IT Setup audit</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs font-mono text-[#17252F]">
+                  <CheckCircle2 className="h-4 w-4 text-[#0D9488] shrink-0" />
+                  <span>Custom Day 1 guide</span>
+                </div>
               </div>
             </div>
 
-            {/* Right 6 cols: Sequential Pipeline & Payload JSON */}
+            {/* Right 6 cols: Visual Pipeline Steps & Output */}
             <div className="lg:col-span-6 flex flex-col gap-4">
-              {/* Sequential Steps in this use case */}
-              <div className="rounded-xl border border-slate-800 bg-slate-950/80 p-4">
-                <div className="text-xs font-mono text-slate-400 uppercase tracking-wider mb-3 font-semibold">
-                  Orchestrated Execution Sequence
+              <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
+                <div className="text-xs font-mono text-[#5C7280] uppercase tracking-wider mb-3 font-semibold flex items-center justify-between">
+                  <span>Execution Sequence</span>
+                  <span className="text-[#0D9488]">5 Steps Connected</span>
                 </div>
-                <div className="space-y-2">
-                  {activeCase.pipeline.map((step, idx) => {
-                    const StepIcon = step.icon;
-                    return (
-                      <div
-                        key={idx}
-                        className="flex items-center justify-between rounded-lg border border-slate-800/80 bg-slate-900/60 px-3.5 py-2.5 text-xs"
-                      >
-                        <div className="flex items-center gap-3">
-                          <span className="font-mono text-slate-500 font-bold">0{idx + 1}</span>
-                          <div className="flex h-7 w-7 items-center justify-center rounded bg-slate-800 text-blue-400">
-                            <StepIcon className="h-3.5 w-3.5" />
-                          </div>
-                          <div>
-                            <span className="font-semibold text-white block">{step.label}</span>
-                            <span className="text-[11px] font-mono text-slate-400">{step.detail}</span>
-                          </div>
-                        </div>
-                        <span className="rounded bg-slate-800/80 px-2 py-0.5 text-[10px] font-mono text-slate-400">
-                          {step.type}
-                        </span>
-                      </div>
-                    );
-                  })}
+
+                <div className="space-y-2 font-mono text-xs">
+                  <div className="flex items-center justify-between rounded-lg bg-[#F8FAF8] border border-slate-200 p-2.5">
+                    <div className="flex items-center gap-2.5">
+                      <span className="font-bold text-[#0D9488]">01</span>
+                      <Zap className="h-4 w-4 text-teal-600" />
+                      <span className="text-[#17252F] font-semibold">HRIS Inbound Webhook</span>
+                    </div>
+                    <span className="text-[10px] text-slate-500 uppercase">Trigger</span>
+                  </div>
+
+                  <div className="flex items-center justify-between rounded-lg bg-[#F8FAF8] border border-slate-200 p-2.5">
+                    <div className="flex items-center gap-2.5">
+                      <span className="font-bold text-indigo-600">02</span>
+                      <Sparkles className="h-4 w-4 text-indigo-600" />
+                      <span className="text-[#17252F] font-semibold">Gemini Role Playbook Synthesis</span>
+                    </div>
+                    <span className="text-[10px] text-slate-500 uppercase">AI Reasoning</span>
+                  </div>
+
+                  <div className="flex items-center justify-between rounded-lg bg-[#F8FAF8] border border-slate-200 p-2.5">
+                    <div className="flex items-center gap-2.5">
+                      <span className="font-bold text-sky-600">03</span>
+                      <Mail className="h-4 w-4 text-sky-600" />
+                      <span className="text-[#17252F] font-semibold">SMTP Welcome Packet Dispatch</span>
+                    </div>
+                    <span className="text-[10px] text-slate-500 uppercase">Email</span>
+                  </div>
+
+                  <div className="flex items-center justify-between rounded-lg bg-[#F8FAF8] border border-slate-200 p-2.5">
+                    <div className="flex items-center gap-2.5">
+                      <span className="font-bold text-amber-600">04</span>
+                      <Clock className="h-4 w-4 text-amber-600" />
+                      <span className="text-[#17252F] font-semibold">Smart Delay (2-Hour IT Window)</span>
+                    </div>
+                    <span className="text-[10px] text-slate-500 uppercase">Timer</span>
+                  </div>
+
+                  <div className="flex items-center justify-between rounded-lg bg-[#F8FAF8] border border-slate-200 p-2.5">
+                    <div className="flex items-center gap-2.5">
+                      <span className="font-bold text-rose-600">05</span>
+                      <Globe className="h-4 w-4 text-rose-600" />
+                      <span className="text-[#17252F] font-semibold">Workspace Provisioning Webhook</span>
+                    </div>
+                    <span className="text-[10px] text-slate-500 uppercase">Webhook</span>
+                  </div>
                 </div>
               </div>
 
-              {/* Payload output */}
-              <div className="rounded-xl border border-slate-800 bg-slate-950/80 p-4 font-mono text-xs">
-                <div className="text-[11px] text-slate-400 uppercase tracking-wider mb-2 font-semibold">
-                  Sample Execution State Payload
+              {/* Sample output state */}
+              <div className="rounded-xl border border-slate-200 bg-white p-4 font-mono text-xs shadow-xs">
+                <div className="text-[11px] text-[#5C7280] uppercase tracking-wider mb-2 font-semibold">
+                  Sample Execution Output Payload
                 </div>
-                <pre className="rounded-lg bg-slate-900 border border-slate-800/80 p-3 text-emerald-300 overflow-x-auto text-[11px] leading-relaxed">
-                  {activeCase.payloadPreview}
+                <pre className="rounded-lg bg-[#101C2C] p-3 text-teal-300 overflow-x-auto text-[11px] leading-relaxed">
+{`{
+  "candidate": "Elena Rostova",
+  "role": "Frontend Architect",
+  "playbook_generated": true,
+  "credentials_dispatched": true,
+  "workspace_synced": true,
+  "status": "completed"
+}`}
                 </pre>
               </div>
             </div>

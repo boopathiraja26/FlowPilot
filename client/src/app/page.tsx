@@ -4,11 +4,9 @@ import { useState, useEffect } from "react";
 import { OpeningAnimation } from "@/components/landing/OpeningAnimation";
 import { LandingNavbar } from "@/components/landing/LandingNavbar";
 import { HeroSection } from "@/components/landing/HeroSection";
-import { ProductShowcase } from "@/components/landing/ProductShowcase";
+import { ScrollShowcase } from "@/components/landing/ScrollShowcase";
 import { CoreCapabilities } from "@/components/landing/CoreCapabilities";
-import { HowItWorks } from "@/components/landing/HowItWorks";
 import { UseCasesSection } from "@/components/landing/UseCasesSection";
-import { ReliabilitySection } from "@/components/landing/ReliabilitySection";
 import { FinalCta } from "@/components/landing/FinalCta";
 import { LandingFooter } from "@/components/landing/LandingFooter";
 
@@ -19,11 +17,11 @@ export default function LandingPage() {
 
   useEffect(() => {
     setMounted(true);
-    // Check if intro has already been shown in this session or reduced-motion is requested
+    // Check if user requested reduced-motion or has already seen intro in this session
     const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     let alreadySeen = false;
     try {
-      alreadySeen = sessionStorage.getItem("flowpilot_intro_seen") === "true";
+      alreadySeen = sessionStorage.getItem("flowpilot_intro_seen_v3") === "true";
     } catch {
       alreadySeen = false;
     }
@@ -44,8 +42,8 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="relative min-h-screen bg-slate-950 text-slate-100 selection:bg-blue-600/30 selection:text-white flex flex-col">
-      {/* Signature Opening Animation ("From Manual Work to Automated Flow") */}
+    <div className="relative min-h-screen bg-[#F8FAF8] text-[#17252F] selection:bg-[#0D9488]/20 selection:text-[#101C2C] flex flex-col font-sans">
+      {/* Signature Opening Experience ("From manual work to automated flow") */}
       {mounted && showAnimation && (
         <OpeningAnimation
           onComplete={handleAnimationComplete}
@@ -53,34 +51,28 @@ export default function LandingPage() {
         />
       )}
 
-      {/* Global Navigation */}
+      {/* Sticky Wordmark Navigation */}
       <LandingNavbar onReplayAnimation={handleReplayAnimation} />
 
-      {/* Main Content Sections */}
+      {/* Main Editorial Sections */}
       <main className="flex-1">
-        {/* Hero Section with Live Workflow Studio preview */}
+        {/* 1. Hero Section with Interactive Dag Preview */}
         <HeroSection />
 
-        {/* Interactive Pipeline Showcase: Data Cascade Demonstration */}
-        <ProductShowcase />
+        {/* 2. Signature Pinned Horizontal Scroll Showcase (BUILD -> AUTOMATE -> MONITOR) */}
+        <ScrollShowcase />
 
-        {/* Core Capabilities: Editorial Bento Grid */}
+        {/* 3. Concise Core Capabilities Bento Grid */}
         <CoreCapabilities />
 
-        {/* How FlowPilot Works: 4-Step Lifecycle */}
-        <HowItWorks />
-
-        {/* Real-World Use Cases: Interactive Multi-Tab Scenarios */}
+        {/* 4. Real-World Practical Automation Example (Employee Onboarding) */}
         <UseCasesSection />
 
-        {/* Reliability, Telemetry & Feature Matrix */}
-        <ReliabilitySection />
-
-        {/* Conversion CTA */}
+        {/* 5. Final Conversion CTA */}
         <FinalCta />
       </main>
 
-      {/* Comprehensive Footer */}
+      {/* 6. Premium Footer with FlowPilot Wordmark */}
       <LandingFooter />
     </div>
   );
