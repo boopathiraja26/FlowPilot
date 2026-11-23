@@ -67,18 +67,35 @@ const STEP_TYPE_CONFIG: Record<
   },
 };
 
+function getStepTypeLabel(type: WorkflowStepType, config: Record<string, any>): string {
+  switch (type) {
+    case "TRIGGER": {
+      const mode = String(config.triggerMode ?? config.trigger_type ?? "manual").toLowerCase();
+      return mode === "webhook" ? "TRIGGER (Incoming Webhook)" : "TRIGGER";
+    }
+    case "WEBHOOK":
+      return "WEBHOOK (Outgoing Action)";
+    default:
+      return type;
+  }
+}
+
 // Helper to extract a short preview line from config
 function getStepPreview(step: WorkflowStepNodeData["step"]): string {
   const config = (step.config as Record<string, any>) ?? {};
   switch (step.type) {
-    case "TRIGGER":
-      return "Event: Trigger payload intake";
+    case "TRIGGER": {
+      const mode = String(config.triggerMode ?? config.trigger_type ?? "manual").toLowerCase();
+      return mode === "webhook" ? "Incoming webhook trigger intake" : "Manual/event trigger intake";
+    }
     case "AI":
       return config.prompt ? `Prompt: "${config.prompt.slice(0, 22)}..."` : "Generate AI content";
     case "EMAIL":
-      return "SMTP: Outbound IPv4 relay";
-    case "WEBHOOK":
-      return config.url ? `URL: ${config.url.slice(0, 20)}...` : "POST Webhook payload";
+      return "Send email (SMTP action)";
+    case "WEBHOOK": {
+      const url = typeof config.url === "string" ? config.url.trim() : "";
+      return url ? `Outgoing URL: ${url.slice(0, 24)}${url.length > 24 ? "..." : ""}` : "Outgoing webhook action (destination URL required)";
+    }
     case "DELAY":
       return config.milliseconds ? `Wait ${config.milliseconds}ms` : "Wait 5000ms";
     default:
@@ -133,7 +150,6 @@ function WorkflowStepNode({
           </span>
         </div>
 
-        {/* Status indicator badge or step type badge */}
         {status === "RUNNING" ? (
           <span className="inline-flex items-center gap-1 shrink-0 rounded-full bg-blue-950 px-2 py-0.5 text-[9px] font-bold text-blue-400 border border-blue-500/30">
             <Loader2 className="h-2.5 w-2.5 animate-spin text-blue-400" />
@@ -149,13 +165,17 @@ function WorkflowStepNode({
             <AlertCircle className="h-2.5 w-2.5 text-rose-400" />
             <span>Failed</span>
           </span>
-        ) : (
-          <span
-            className={`shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${config.badgeBg} ${config.badgeText}`}
-          >
-            {step.type}
-          </span>
-        )}
+        ) : null}
+      </div>
+
+      {/* Actual action type (always visible, independent of custom name/status) */}
+      <div className="mt-2">
+        <span
+          className={`inline-flex max-w-full items-center rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${config.badgeBg} ${config.badgeText}`}
+          title={`Action type: ${getStepTypeLabel(step.type, (step.config as Record<string, any>) ?? {})}`}
+        >
+          <span className="truncate">{getStepTypeLabel(step.type, (step.config as Record<string, any>) ?? {})}</span>
+        </span>
       </div>
 
       {/* Step Info */}

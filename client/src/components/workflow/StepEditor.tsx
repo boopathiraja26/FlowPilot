@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { WorkflowStep, WorkflowStepType } from "@/types/workflow";
-import { Save, Trash2, Edit3, Code, Sparkles, Mail, Clock, Globe, Zap } from "lucide-react";
+import { Save, Trash2, Edit3, Code, Sparkles, Mail, Clock, Globe, Zap, Link2, KeyRound, RotateCcw, EyeOff, Copy } from "lucide-react";
+import { rotateStepWebhookSecret } from "@/lib/api/workflowStep";
 
 export interface StepEditorValues {
   name: string;
@@ -18,13 +19,34 @@ interface StepEditorProps {
   isSaving: boolean;
 }
 
-const STEP_TYPE_OPTIONS: WorkflowStepType[] = [
-  "TRIGGER",
-  "AI",
-  "EMAIL",
-  "DELAY",
-  "WEBHOOK",
+const STEP_TYPE_OPTIONS: Array<{ value: WorkflowStepType; label: string }> = [
+  { value: "TRIGGER", label: "TRIGGER — Start / Incoming Trigger" },
+  { value: "AI", label: "AI — Gemini Action" },
+  { value: "EMAIL", label: "EMAIL — Send Email Action" },
+  { value: "DELAY", label: "DELAY — Wait/Timer Action" },
+  { value: "WEBHOOK", label: "WEBHOOK — Outgoing HTTP Action" },
 ];
+
+function getActionTypeLabel(type: WorkflowStepType, triggerMode?: TriggerMode): string {
+  switch (type) {
+    case "TRIGGER":
+      return triggerMode === "webhook"
+        ? "TRIGGER (Incoming webhook trigger)"
+        : "TRIGGER (Start trigger)";
+    case "WEBHOOK":
+      return "WEBHOOK (Outgoing HTTP action)";
+    case "AI":
+      return "AI (Gemini action)";
+    case "EMAIL":
+      return "EMAIL (Send email action)";
+    case "DELAY":
+      return "DELAY (Wait/timer action)";
+    default:
+      return type;
+  }
+}
+
+type TriggerMode = "manual" | "webhook";
 
 interface StepFormState {
   name: string;
@@ -43,6 +65,8 @@ interface StepFormState {
   webhookMethod: string;
 
   triggerType: string;
+  triggerMode: TriggerMode;
+  webhookSecret: string;
   formId: string;
 
   employeeName: string;
@@ -60,8 +84,78 @@ interface StepFormState {
   configText: string;
 }
 
+const WEBHOOK_SECRET_REDACTED_PLACEHOLDER = "[REDACTED_WEBHOOK_SECRET]";
+
+function isRedactedWebhookSecret(value: string | undefined | null): boolean {
+  return (value ?? "") === WEBHOOK_SECRET_REDACTED_PLACEHOLDER;
+}
+
+function getApiBaseUrl(): string {
+  const raw = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/api";
+  return raw.replace(/\/+$/, "");
+}
+
+function generateWebhookSecret(): string {
+  const bytes = new Uint8Array(24);
+  if (typeof crypto !== "undefined" && crypto.getRandomValues) {
+    crypto.getRandomValues(bytes);
+  } else {
+    for (let i = 0; i < bytes.length; i += 1) bytes[i] = Math.floor(Math.random() * 256);
+  }
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+const OUTGOING_WEBHOOK_PLACEHOLDER_HOSTS = new Set([
+  "api.example.com",
+  "example.com",
+  "www.example.com",
+]);
+
+function getOutgoingWebhookUrlValidationError(urlValue: string): string | null {
+  const trimmed = urlValue.trim();
+  if (!trimmed) {
+    return "Outgoing webhook URL is required. Enter a valid destination URL in this step.";
+  }
+  if (/\{\{[\s\S]*\}\}/.test(trimmed)) {
+    return null;
+  }
+
+  let parsed: URL;
+  try {
+    parsed = new URL(trimmed);
+  } catch {
+    return "Outgoing webhook URL must be a valid http(s) URL (for example, https://api.your-service.com/webhook).";
+  }
+
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    return "Outgoing webhook URL must start with http:// or https://.";
+  }
+
+  if (OUTGOING_WEBHOOK_PLACEHOLDER_HOSTS.has(parsed.hostname)) {
+    return `Outgoing webhook URL cannot use placeholder host "${parsed.hostname}". Configure a real destination URL.`;
+  }
+
+  return null;
+}
+
+function inferTriggerMode(config: Record<string, unknown>): TriggerMode {
+  const triggerMode = typeof config.triggerMode === "string" ? config.triggerMode.toLowerCase() : "";
+  const triggerType = typeof config.trigger_type === "string" ? config.trigger_type.toLowerCase() : "";
+  if (triggerMode === "webhook" || triggerType === "webhook" || triggerType === "incoming_webhook") {
+    return "webhook";
+  }
+  return "manual";
+}
+
 function createFormState(step: WorkflowStep): StepFormState {
   const config = (step.config ?? {}) as Record<string, unknown>;
+  const triggerMode = inferTriggerMode(config);
+  const webhookSecret =
+    typeof config.webhookSecret === "string"
+      ? config.webhookSecret
+      : typeof config.webhook_secret === "string"
+      ? config.webhook_secret
+      : "";
 
   return {
     name: step.name,
@@ -110,7 +204,10 @@ function createFormState(step: WorkflowStep): StepFormState {
     triggerType:
       typeof config.trigger_type === "string"
         ? config.trigger_type
-        : "",
+        : triggerMode,
+
+    triggerMode,
+    webhookSecret,
 
     formId:
       typeof config.form_id === "string"
@@ -170,10 +267,92 @@ function createFormState(step: WorkflowStep): StepFormState {
     eventName:
       typeof config.event === "string"
         ? config.event
-        : "employee_added",
+        : "manual.trigger",
 
     configText: JSON.stringify(config, null, 2),
   };
+}
+
+function buildConfig(form: StepFormState): Record<string, unknown> {
+  let config: Record<string, unknown> = {};
+
+  switch (form.type) {
+    case "AI":
+      config.prompt = form.prompt;
+      break;
+
+    case "EMAIL":
+      config.to = form.emailTo;
+      config.subject = form.emailSubject;
+      config.body = form.emailBody;
+      break;
+
+    case "DELAY":
+      config.milliseconds = form.delayMs;
+      break;
+
+    case "WEBHOOK":
+      config.url = form.webhookUrl.trim();
+      config.method = form.webhookMethod;
+      break;
+
+    case "TRIGGER":
+      config.triggerMode = form.triggerMode;
+      config.trigger_type = form.triggerMode;
+      config.form_id = form.formId;
+      config.event = form.eventName || "manual.trigger";
+
+      config.employee_name = form.employeeName;
+      config.employee_email = form.employeeEmail;
+      config.department = form.department;
+      config.job_title = form.jobTitle;
+      config.company_name = form.companyName;
+      config.manager_name = form.managerName;
+      config.manager_email = form.managerEmail;
+      config.start_date = form.startDate;
+      config.company_address = form.companyAddress;
+      config.company_phone = form.companyPhone;
+
+      if (form.triggerMode === "webhook") {
+        config.webhookSecret = form.webhookSecret.trim();
+      } else {
+        delete config.webhookSecret;
+        delete config.webhook_secret;
+      }
+      break;
+  }
+
+  try {
+    const raw = JSON.parse(form.configText);
+    if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+      config = {
+        ...(raw as Record<string, unknown>),
+        ...config,
+      };
+    }
+  } catch {
+    // Save is disabled when config JSON is invalid.
+  }
+
+  config.description = form.description;
+  if (form.type === "TRIGGER") {
+    config.triggerMode = form.triggerMode;
+    config.trigger_type = form.triggerMode;
+    if (form.triggerMode === "webhook") {
+      const secret = form.webhookSecret.trim();
+      if (secret) {
+        config.webhookSecret = secret;
+      } else {
+        delete config.webhookSecret;
+      }
+      delete config.webhook_secret;
+    } else {
+      delete config.webhookSecret;
+      delete config.webhook_secret;
+    }
+  }
+
+  return config;
 }
 
 export function StepEditor({
@@ -185,21 +364,16 @@ export function StepEditor({
   const [form, setForm] = useState<StepFormState>(() =>
     createFormState(step)
   );
-
   const [configError, setConfigError] = useState<string | null>(null);
-
-  // =========================================================
-  // Sync editor when selected step changes
-  // =========================================================
+  const [isRotatingSecret, setIsRotatingSecret] = useState(false);
+  const [rotationMessage, setRotationMessage] = useState<string | null>(null);
 
   useEffect(() => {
     setForm(createFormState(step));
     setConfigError(null);
+    setIsRotatingSecret(false);
+    setRotationMessage(null);
   }, [step]);
-
-  // =========================================================
-  // Generic field updater
-  // =========================================================
 
   function updateField<K extends keyof StepFormState>(
     field: K,
@@ -211,13 +385,8 @@ export function StepEditor({
     }));
   }
 
-  // =========================================================
-  // Config JSON validation
-  // =========================================================
-
   function handleConfigChange(value: string) {
     updateField("configText", value);
-
     try {
       JSON.parse(value);
       setConfigError(null);
@@ -226,81 +395,89 @@ export function StepEditor({
     }
   }
 
-  // =========================================================
-  // Save
-  // =========================================================
+  function handleTriggerModeChange(mode: TriggerMode) {
+    setForm((current) => ({
+      ...current,
+      triggerMode: mode,
+      triggerType: mode,
+      webhookSecret:
+        mode === "webhook" && !current.webhookSecret
+          ? generateWebhookSecret()
+          : current.webhookSecret,
+    }));
+    setRotationMessage(null);
+  }
 
   function handleSave() {
-    let config: Record<string, unknown> = {};
-
-    switch (form.type) {
-      case "AI":
-        config.prompt = form.prompt;
-        break;
-
-      case "EMAIL":
-        config.to = form.emailTo;
-        config.subject = form.emailSubject;
-        config.body = form.emailBody;
-        break;
-
-      case "DELAY":
-        config.milliseconds = form.delayMs;
-        break;
-
-      case "WEBHOOK":
-        config.url = form.webhookUrl;
-        config.method = form.webhookMethod;
-        break;
-
-      case "TRIGGER":
-        config.trigger_type = form.triggerType;
-        config.form_id = form.formId;
-
-        config.employee_name = form.employeeName;
-        config.employee_email = form.employeeEmail;
-        config.department = form.department;
-        config.job_title = form.jobTitle;
-        config.company_name = form.companyName;
-        config.manager_name = form.managerName;
-        config.manager_email = form.managerEmail;
-        config.start_date = form.startDate;
-        config.company_address = form.companyAddress;
-        config.company_phone = form.companyPhone;
-        config.event = form.eventName;
-
-        break;
-    }
-
-    // Preserve manually entered JSON configuration.
-    try {
-      const raw = JSON.parse(form.configText);
-
-      config = {
-        ...raw,
-        ...config,
-      };
-    } catch {
-      // The Save button is disabled when config is invalid
-    }
-
-    config.description = form.description;
-
+    if (configError) return;
+    const config = buildConfig(form);
     onSave({
-      name: form.name,
+      name: form.name.trim(),
       type: form.type,
       description: form.description,
       config,
     });
   }
 
+  const isSecretRedacted = isRedactedWebhookSecret(form.webhookSecret);
+
+  const triggerValidationError = useMemo(() => {
+    if (form.type !== "TRIGGER") return null;
+    if (form.triggerMode === "webhook") {
+      if (isSecretRedacted) return null; // existing stored secret will be preserved on save
+      if (form.webhookSecret.trim().length < 16) {
+        return "Webhook trigger requires a webhook secret (at least 16 characters).";
+      }
+    }
+    return null;
+  }, [form.type, form.triggerMode, form.webhookSecret, isSecretRedacted]);
+
+  const outgoingWebhookValidationError = useMemo(() => {
+    if (form.type !== "WEBHOOK") return null;
+    return getOutgoingWebhookUrlValidationError(form.webhookUrl);
+  }, [form.type, form.webhookUrl]);
+
+  async function handleRotateWebhookSecret() {
+    if (isSaving || isRotatingSecret) return;
+    setRotationMessage(null);
+    setIsRotatingSecret(true);
+    try {
+      const result = await rotateStepWebhookSecret(step.id);
+      if (result?.webhookSecret) {
+        updateField("webhookSecret", result.webhookSecret);
+        setRotationMessage("New secret generated and saved. Copy it now — ordinary API responses will not show it again.");
+      } else {
+        setRotationMessage("Secret rotated. Reload the step to continue.");
+      }
+    } catch (err: any) {
+      setConfigError(err?.response?.data?.message || err?.message || "Failed to rotate webhook secret.");
+    } finally {
+      setIsRotatingSecret(false);
+    }
+  }
+
+  async function handleCopyWebhookSecret() {
+    if (isSecretRedacted || !form.webhookSecret) return;
+    try {
+      await navigator.clipboard?.writeText(form.webhookSecret);
+      setRotationMessage("Secret copied to clipboard.");
+      setTimeout(() => setRotationMessage(null), 2000);
+    } catch {
+      setRotationMessage("Could not copy automatically. Please copy the secret manually.");
+    }
+  }
+
   const isSaveDisabled =
     isSaving ||
     Boolean(configError) ||
+    Boolean(triggerValidationError) ||
+    Boolean(outgoingWebhookValidationError) ||
     !form.name.trim();
 
   const inputClasses =
     "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50 disabled:text-slate-400";
+
+  const incomingWebhookUrl = `${getApiBaseUrl()}/triggers/webhook/${step.workflowId}`;
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-card">
@@ -336,7 +513,7 @@ export function StepEditor({
         {/* Step Type */}
         <div>
           <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">
-            Node Type
+            Action Type
           </label>
           <select
             value={form.type}
@@ -349,12 +526,15 @@ export function StepEditor({
             }
             className={inputClasses}
           >
-            {STEP_TYPE_OPTIONS.map((type) => (
-              <option key={type} value={type} className="bg-white text-slate-800">
-                {type}
+            {STEP_TYPE_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value} className="bg-white text-slate-800">
+                {option.label}
               </option>
             ))}
           </select>
+          <p className="mt-1 text-[11px] text-slate-500">
+            Actual action type (independent of node name): <span className="font-semibold text-slate-700">{getActionTypeLabel(form.type, form.triggerMode)}</span>
+          </p>
         </div>
 
         {/* Description */}
@@ -464,6 +644,7 @@ export function StepEditor({
             </label>
             <input
               type="number"
+              min={0}
               value={form.delayMs}
               disabled={isSaving}
               onChange={(e) =>
@@ -477,13 +658,16 @@ export function StepEditor({
           </div>
         )}
 
-        {/* WEBHOOK */}
+        {/* WEBHOOK (outgoing action step) */}
         {form.type === "WEBHOOK" && (
           <div className="rounded-xl border border-pink-200 bg-pink-50/50 p-3 space-y-3">
             <div className="flex items-center gap-1.5 text-xs font-bold text-pink-700">
               <Globe className="h-3.5 w-3.5" />
-              <span>HTTP Webhook Dispatch</span>
+              <span>Outgoing HTTP Webhook Action</span>
             </div>
+            <p className="text-[11px] text-pink-700/90">
+              Sends an HTTP request to an external destination URL. This is different from an incoming webhook <strong>TRIGGER</strong>. A valid destination URL is required.
+            </p>
 
             <div>
               <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">
@@ -498,6 +682,11 @@ export function StepEditor({
                 placeholder="https://api.domain.com/webhook"
                 className={inputClasses}
               />
+              {outgoingWebhookValidationError && (
+                <p className="mt-1 text-xs font-medium text-rose-600">
+                  {outgoingWebhookValidationError}
+                </p>
+              )}
             </div>
 
             <div>
@@ -527,61 +716,209 @@ export function StepEditor({
 
         {/* TRIGGER */}
         {form.type === "TRIGGER" && (
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-3 space-y-2.5">
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-3 space-y-3">
             <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-700">
               <Zap className="h-3.5 w-3.5" />
-              <span>Trigger Payload Schema</span>
+              <span>Trigger Configuration (Workflow Start)</span>
+            </div>
+            <p className="text-[11px] text-emerald-700/90">
+              Configures how this workflow starts. &quot;Incoming webhook&quot; trigger mode receives external HTTP requests; it is not an outgoing <strong>WEBHOOK</strong> action and does not require an outgoing destination URL.
+            </p>
+
+            <div>
+              <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                Trigger Mode
+              </label>
+              <select
+                value={form.triggerMode}
+                disabled={isSaving}
+                onChange={(e) => handleTriggerModeChange(e.target.value as TriggerMode)}
+                className={inputClasses}
+              >
+                <option value="manual">Manual (run from dashboard/builder)</option>
+                <option value="webhook">Incoming webhook (external HTTP trigger)</option>
+              </select>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                Event Name
+              </label>
               <input
-                value={form.employeeName}
+                value={form.eventName}
                 disabled={isSaving}
-                onChange={(e) => updateField("employeeName", e.target.value)}
-                placeholder="Employee Name"
-                className={inputClasses}
-              />
-              <input
-                value={form.employeeEmail}
-                disabled={isSaving}
-                onChange={(e) => updateField("employeeEmail", e.target.value)}
-                placeholder="Employee Email"
-                className={inputClasses}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <input
-                value={form.department}
-                disabled={isSaving}
-                onChange={(e) => updateField("department", e.target.value)}
-                placeholder="Department"
-                className={inputClasses}
-              />
-              <input
-                value={form.jobTitle}
-                disabled={isSaving}
-                onChange={(e) => updateField("jobTitle", e.target.value)}
-                placeholder="Job Title"
+                onChange={(e) => updateField("eventName", e.target.value)}
+                placeholder="e.g. employee.onboarded"
                 className={inputClasses}
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              <input
-                value={form.companyName}
-                disabled={isSaving}
-                onChange={(e) => updateField("companyName", e.target.value)}
-                placeholder="Company Name"
-                className={inputClasses}
-              />
-              <input
-                value={form.managerName}
-                disabled={isSaving}
-                onChange={(e) => updateField("managerName", e.target.value)}
-                placeholder="Manager Name"
-                className={inputClasses}
-              />
+            {form.triggerMode === "webhook" && (
+              <div className="rounded-lg border border-emerald-200 bg-white p-2.5 space-y-2">
+                <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700">
+                  <KeyRound className="h-3.5 w-3.5" />
+                  <span>Incoming Webhook Security</span>
+                </div>
+                <div>
+                  <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                    Webhook Secret
+                  </label>
+                  {isSecretRedacted ? (
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600 flex items-center gap-2">
+                      <EyeOff className="h-3.5 w-3.5 text-slate-500" />
+                      <span>Configured (hidden for security). Rotate to generate a new secret.</span>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <input
+                        value={form.webhookSecret}
+                        disabled={isSaving}
+                        onChange={(e) => { updateField("webhookSecret", e.target.value); setRotationMessage(null); }}
+                        placeholder="Generate or rotate a secret"
+                        className={inputClasses}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleCopyWebhookSecret}
+                        disabled={isSaving || !form.webhookSecret}
+                        className="shrink-0 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+                        title="Copy secret"
+                      >
+                        <Copy className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  )}
+                  <div className="mt-2 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleRotateWebhookSecret}
+                      disabled={isSaving || isRotatingSecret}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                      title="Generate and save a new webhook secret"
+                    >
+                      <RotateCcw className={`h-3.5 w-3.5 ${isRotatingSecret ? "animate-spin" : ""}`} />
+                      <span>{isRotatingSecret ? "Rotating..." : "Rotate secret"}</span>
+                    </button>
+                    {!isSecretRedacted && !form.webhookSecret && (
+                      <button
+                        type="button"
+                        onClick={() => updateField("webhookSecret", generateWebhookSecret())}
+                        disabled={isSaving}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+                      >
+                        <KeyRound className="h-3.5 w-3.5" />
+                        <span>Generate</span>
+                      </button>
+                    )}
+                  </div>
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    Send this secret only in header <code className="font-mono">x-webhook-secret</code>. Query/body secrets are rejected. Workflow must be <strong>ACTIVE</strong> to accept incoming triggers.
+                  </p>
+                  {isSecretRedacted && (
+                    <p className="mt-1 text-[11px] text-slate-500 flex items-center gap-1">
+                      <EyeOff className="h-3 w-3" /> Existing secrets are never shown in ordinary workflow API responses. Saving edits preserves the stored secret.
+                    </p>
+                  )}
+                  {!isSecretRedacted && form.webhookSecret && (
+                    <p className="mt-1 text-[11px] text-amber-700">
+                      Copy this secret now if needed. After reload, ordinary responses will hide it for security.
+                    </p>
+                  )}
+                  {rotationMessage && (
+                    <p className="mt-1 text-[11px] font-medium text-emerald-700">{rotationMessage}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                    Webhook Endpoint
+                  </label>
+                  <div className="flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2">
+                    <Link2 className="mt-0.5 h-3.5 w-3.5 text-slate-500 shrink-0" />
+                    <code className="text-[11px] text-slate-700 break-all">{incomingWebhookUrl}</code>
+                  </div>
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    POST JSON payload to this endpoint with the <code className="font-mono">x-webhook-secret</code> header.
+                  </p>
+                </div>
+
+                {triggerValidationError && (
+                  <p className="text-xs font-medium text-rose-600">{triggerValidationError}</p>
+                )}
+              </div>
+            )}
+
+            <div className="pt-1 border-t border-emerald-100">
+              <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                Default Trigger Payload (optional, used as fallback/manual defaults)
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  value={form.employeeName}
+                  disabled={isSaving}
+                  onChange={(e) => updateField("employeeName", e.target.value)}
+                  placeholder="Employee Name"
+                  className={inputClasses}
+                />
+                <input
+                  value={form.employeeEmail}
+                  disabled={isSaving}
+                  onChange={(e) => updateField("employeeEmail", e.target.value)}
+                  placeholder="Employee Email"
+                  className={inputClasses}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                <input
+                  value={form.department}
+                  disabled={isSaving}
+                  onChange={(e) => updateField("department", e.target.value)}
+                  placeholder="Department"
+                  className={inputClasses}
+                />
+                <input
+                  value={form.jobTitle}
+                  disabled={isSaving}
+                  onChange={(e) => updateField("jobTitle", e.target.value)}
+                  placeholder="Job Title"
+                  className={inputClasses}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                <input
+                  value={form.companyName}
+                  disabled={isSaving}
+                  onChange={(e) => updateField("companyName", e.target.value)}
+                  placeholder="Company Name"
+                  className={inputClasses}
+                />
+                <input
+                  value={form.managerName}
+                  disabled={isSaving}
+                  onChange={(e) => updateField("managerName", e.target.value)}
+                  placeholder="Manager Name"
+                  className={inputClasses}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                <input
+                  value={form.managerEmail}
+                  disabled={isSaving}
+                  onChange={(e) => updateField("managerEmail", e.target.value)}
+                  placeholder="Manager Email"
+                  className={inputClasses}
+                />
+                <input
+                  value={form.startDate}
+                  disabled={isSaving}
+                  onChange={(e) => updateField("startDate", e.target.value)}
+                  placeholder="Start Date"
+                  className={inputClasses}
+                />
+              </div>
             </div>
           </div>
         )}

@@ -15,6 +15,8 @@ export default function WorkflowsPage() {
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [togglingWorkflowId, setTogglingWorkflowId] = useState<string | null>(null);
 
   useEffect(() => {
     let isCancelled = false;
@@ -58,12 +60,45 @@ export default function WorkflowsPage() {
 
     try {
       await api.delete(`/workflows/${workflowId}`);
-
       setWorkflows((prev) =>
         prev.filter((workflow) => workflow.id !== workflowId)
       );
-    } catch (error) {
-      alert("Failed to delete workflow.");
+    } catch {
+      setActionError("Failed to delete workflow.");
+    }
+  }
+
+  async function handleActivate(workflowId: string) {
+    setTogglingWorkflowId(workflowId);
+    setActionError(null);
+    try {
+      const response = await api.post(`/workflows/${workflowId}/activate`);
+      const updated = response.data.data.workflow as Workflow;
+      setWorkflows((prev) =>
+        prev.map((w) => (w.id === workflowId ? { ...w, status: updated.status, updatedAt: updated.updatedAt } : w))
+      );
+    } catch (err: any) {
+      const message = err?.response?.data?.message || "Failed to activate workflow.";
+      setActionError(message);
+    } finally {
+      setTogglingWorkflowId(null);
+    }
+  }
+
+  async function handleDeactivate(workflowId: string) {
+    setTogglingWorkflowId(workflowId);
+    setActionError(null);
+    try {
+      const response = await api.post(`/workflows/${workflowId}/deactivate`);
+      const updated = response.data.data.workflow as Workflow;
+      setWorkflows((prev) =>
+        prev.map((w) => (w.id === workflowId ? { ...w, status: updated.status, updatedAt: updated.updatedAt } : w))
+      );
+    } catch (err: any) {
+      const message = err?.response?.data?.message || "Failed to deactivate workflow.";
+      setActionError(message);
+    } finally {
+      setTogglingWorkflowId(null);
     }
   }
 
@@ -131,6 +166,13 @@ export default function WorkflowsPage() {
           </div>
         )}
 
+        {actionError && (
+          <div className="flex items-center gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-rose-700 shadow-sm">
+            <AlertCircle className="h-5 w-5 shrink-0 text-rose-600" />
+            <p className="text-sm font-semibold">{actionError}</p>
+          </div>
+        )}
+
         {/* Loading Skeletons */}
         {isLoading && (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -165,7 +207,14 @@ export default function WorkflowsPage() {
         {!isLoading && !error && workflows.length > 0 && (
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 animate-fade-in">
             {workflows.map((workflow) => (
-              <WorkflowCard key={workflow.id} workflow={workflow} onDelete={handleDelete} />
+              <WorkflowCard
+                key={workflow.id}
+                workflow={workflow}
+                onDelete={handleDelete}
+                onActivate={handleActivate}
+                onDeactivate={handleDeactivate}
+                isToggling={togglingWorkflowId === workflow.id}
+              />
             ))}
           </div>
         )}

@@ -40,6 +40,11 @@ export async function deleteStep(stepId: string) {
   await api.delete(`/workflow-steps/${stepId}`);
 }
 
+export async function rotateStepWebhookSecret(stepId: string): Promise<{ step: any; webhookSecret: string }> {
+  const response = await api.post(`/workflow-steps/${stepId}/webhook-secret/rotate`);
+  return response.data.data as { step: any; webhookSecret: string };
+}
+
 export async function reorderSteps(
   workflowId: string,
   stepIds: string[]

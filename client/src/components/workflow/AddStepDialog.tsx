@@ -18,7 +18,7 @@ const STEP_TYPE_OPTIONS: {
 }[] = [
   {
     value: "TRIGGER",
-    label: "Trigger",
+    label: "Trigger (Start)",
     icon: Zap,
     activeBg: "bg-emerald-50",
     activeText: "text-emerald-700",
@@ -50,7 +50,7 @@ const STEP_TYPE_OPTIONS: {
   },
   {
     value: "WEBHOOK",
-    label: "Webhook",
+    label: "Webhook Action (Outgoing)",
     icon: Globe,
     activeBg: "bg-pink-50",
     activeText: "text-pink-700",
@@ -127,7 +127,7 @@ export function AddStepDialog({
             </h2>
 
             <p className="mt-1 text-xs text-slate-500">
-              Select a step type and give your new pipeline node a name.
+              Select an action type and give your node a name. The action type controls behavior (e.g. outgoing webhook action vs incoming trigger).
             </p>
           </div>
 

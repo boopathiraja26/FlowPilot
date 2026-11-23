@@ -72,6 +72,7 @@ export default function WorkflowBuilderPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isExecuting, setIsExecuting] = useState(false);
   const [isStepSaving, setIsStepSaving] = useState(false);
+  const [isTogglingActivation, setIsTogglingActivation] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
 
@@ -280,6 +281,40 @@ export default function WorkflowBuilderPage() {
     }
   }
 
+  async function handleToggleActivation() {
+    if (!workflow) return;
+    setIsTogglingActivation(true);
+    setActionError(null);
+    setActionMessage(null);
+    const shouldActivate = workflow.status !== "ACTIVE";
+    try {
+      const endpoint = shouldActivate ? "activate" : "deactivate";
+      const response = await api.post(`/workflows/${workflow.id}/${endpoint}`);
+      const updated = response.data.data.workflow as Workflow;
+      setWorkflow((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: updated.status,
+              updatedAt: updated.updatedAt ?? prev.updatedAt,
+            }
+          : prev
+      );
+      setActionMessage(
+        shouldActivate ? "Workflow activated." : "Workflow deactivated."
+      );
+    } catch (err: unknown) {
+      const message =
+        (err as { response?: { data?: { message?: string } }; message?: string })?.response?.data
+          ?.message ||
+        (err as { message?: string })?.message ||
+        "Couldn't update workflow activation status.";
+      setActionError(message);
+    } finally {
+      setIsTogglingActivation(false);
+    }
+  }
+
   const [isExecuteModalOpen, setIsExecuteModalOpen] = useState(false);
 
   // Extract initial values from saved TRIGGER step config if available
@@ -447,7 +482,7 @@ export default function WorkflowBuilderPage() {
               <button
                 type="button"
                 onClick={handleSaveWorkflow}
-                disabled={isSaving || isExecuting}
+                disabled={isSaving || isExecuting || isTogglingActivation}
                 className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-sm transition-all hover:bg-slate-50 hover:border-slate-300 hover:text-slate-900 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Save className="h-3.5 w-3.5 text-slate-500" />
@@ -456,8 +491,36 @@ export default function WorkflowBuilderPage() {
 
               <button
                 type="button"
+                onClick={handleToggleActivation}
+                disabled={isSaving || isExecuting || isTogglingActivation}
+                className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-semibold shadow-sm transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 ${
+                  workflow.status === "ACTIVE"
+                    ? "border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
+                    : "border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                }`}
+              >
+                {isTogglingActivation ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <span>Updating...</span>
+                  </>
+                ) : workflow.status === "ACTIVE" ? (
+                  <>
+                    <AlertCircle className="h-3.5 w-3.5" />
+                    <span>Deactivate</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    <span>Activate</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                type="button"
                 onClick={handleOpenExecuteModal}
-                disabled={isSaving || isExecuting}
+                disabled={isSaving || isExecuting || isTogglingActivation}
                 className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-sm transition-all hover:bg-blue-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isExecuting ? (

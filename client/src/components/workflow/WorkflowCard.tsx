@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { GitFork, Trash2, ArrowUpRight, Layers } from "lucide-react";
+import { GitFork, Trash2, ArrowUpRight, Layers, Power, PauseCircle } from "lucide-react";
 import { Workflow } from "@/types/workflow";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 
@@ -22,15 +22,25 @@ function formatCreatedDate(isoDate: string): string {
 interface WorkflowCardProps {
   workflow: Workflow;
   onDelete: (workflowId: string) => void;
+  onActivate?: (workflowId: string) => void | Promise<void>;
+  onDeactivate?: (workflowId: string) => void | Promise<void>;
+  isToggling?: boolean;
 }
 
 // =========================================================
 // WorkflowCard Component
 // =========================================================
 
-export function WorkflowCard({ workflow, onDelete }: WorkflowCardProps) {
+export function WorkflowCard({
+  workflow,
+  onDelete,
+  onActivate,
+  onDeactivate,
+  isToggling = false,
+}: WorkflowCardProps) {
   const steps = workflow.steps ?? [];
   const stepCount = steps.length;
+  const isActive = workflow.status === "ACTIVE";
 
   return (
     <div className="group relative flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md">
@@ -87,6 +97,30 @@ export function WorkflowCard({ workflow, onDelete }: WorkflowCardProps) {
         </div>
 
         <div className="flex items-center gap-2">
+          {isActive ? (
+            <button
+              type="button"
+              onClick={() => onDeactivate?.(workflow.id)}
+              disabled={isToggling || !onDeactivate}
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700 shadow-sm transition-all duration-150 hover:bg-amber-100 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+              title="Deactivate workflow"
+            >
+              <PauseCircle className="h-3.5 w-3.5" />
+              <span>{isToggling ? "Updating..." : "Deactivate"}</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onActivate?.(workflow.id)}
+              disabled={isToggling || !onActivate}
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 shadow-sm transition-all duration-150 hover:bg-emerald-100 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+              title="Activate workflow"
+            >
+              <Power className="h-3.5 w-3.5" />
+              <span>{isToggling ? "Updating..." : "Activate"}</span>
+            </button>
+          )}
+
           <Link
             href={`/dashboard/workflows/${workflow.id}`}
             className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-bold text-white shadow-sm transition-all duration-150 hover:bg-blue-700 active:scale-[0.98]"
