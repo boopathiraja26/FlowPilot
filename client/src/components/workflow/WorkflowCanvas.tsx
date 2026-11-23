@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef } from "react";
 import ReactFlow, {
-  addEdge,
   Background,
   Connection,
   Controls,
@@ -66,7 +65,10 @@ interface WorkflowCanvasProps {
     allNodes: Node<WorkflowStepNodeData>[]
   ) => void;
 
+  onPositionsChange?: (positions: Record<string, { x: number; y: number }>) => void;
+
   onConnect?: (connection: Connection) => void;
+  onInvalidConnection?: (message: string) => void;
 
   onNodesChange?: OnNodesChange;
 
@@ -86,7 +88,9 @@ function WorkflowCanvasInner({
   workflow,
   onNodeClick,
   onNodeDragStop,
+  onPositionsChange,
   onConnect,
+  onInvalidConnection,
   onNodesChange,
   onEdgesChange,
   executingStepId,
@@ -135,11 +139,12 @@ function WorkflowCanvasInner({
 
     setNodes(newNodes);
     setEdges(newEdges);
+    onPositionsChange?.({ ...freshPositions });
 
     setTimeout(() => {
       fitView({ padding: 0.25, duration: 400 });
     }, 50);
-  }, [workflow, fitView, setNodes, setEdges]);
+  }, [workflow, fitView, setNodes, setEdges, onPositionsChange]);
 
   const handleFitView = useCallback(() => {
     fitView({ padding: 0.25, duration: 300 });
@@ -163,11 +168,13 @@ function WorkflowCanvasInner({
   // =========================================================
 
   useEffect(() => {
-    // Build next nodes while keeping existing dragged coordinates intact
+    // Prefer persisted positions when workflow data refreshes (e.g. after save/reload)
+    // while keeping in-session placement for nodes not yet persisted.
     const { nodes: nextNodes, edges: nextEdges, positions: updatedPositions } =
-      buildWorkflowFlow(workflow, positionsMapRef.current);
+      buildWorkflowFlow(workflow, positionsMapRef.current, { preferPersisted: true });
 
     positionsMapRef.current = updatedPositions;
+    onPositionsChange?.({ ...updatedPositions });
 
     // Apply active execution states if executingStepId is provided
     const updatedNodes = nextNodes.map((n) => {
@@ -193,7 +200,7 @@ function WorkflowCanvasInner({
 
     setNodes(updatedNodes);
     setEdges(updatedEdges);
-  }, [workflow, executingStepId, setNodes, setEdges]);
+  }, [workflow, executingStepId, setNodes, setEdges, onPositionsChange]);
 
   // =========================================================
   // Node Drag Handlers (Instant Position Recording)
@@ -223,37 +230,58 @@ function WorkflowCanvasInner({
       if (node?.position) {
         positionsMapRef.current[node.id] = { ...node.position };
       }
-
+      onPositionsChange?.({ ...positionsMapRef.current });
       onNodeDragStop?.(event, node, nodes);
     },
-    [onNodeDragStop, nodes]
+    [onNodeDragStop, nodes, onPositionsChange]
   );
 
   // =========================================================
-  // Connect
+  // Connect / edge changes (sequential engine: connections are derived from step order)
   // =========================================================
 
   const handleConnect = useCallback(
     (connection: Connection) => {
-      setEdges((currentEdges) =>
-        addEdge({ ...connection, type: "animatedEdge" }, currentEdges)
+      const orderedIds = [...(workflow.steps ?? [])]
+        .sort((a, b) => a.stepOrder - b.stepOrder)
+        .map((s) => s.id);
+      const isAdjacentInOrder = Boolean(
+        connection.source &&
+          connection.target &&
+          orderedIds.some((id, i) => id === connection.source && orderedIds[i + 1] === connection.target)
       );
 
+      if (!isAdjacentInOrder) {
+        onInvalidConnection?.(
+          "Invalid connection. FlowPilot executes steps sequentially, so branching and cycles are not supported. Use reorder controls to change execution order."
+        );
+        return;
+      }
+
+      // Adjacent linear connection already represented by derived edges/order.
       onConnect?.(connection);
     },
-    [setEdges, onConnect]
+    [workflow.steps, onConnect, onInvalidConnection]
   );
-
-  // =========================================================
-  // Edge changes
-  // =========================================================
 
   const handleEdgesChange = useCallback(
     (changes: EdgeChange[]) => {
+      // Ignore manual edge removals/additions in the canvas UI; edges are synchronized
+      // from persisted sequential step order to match backend execution.
+      const ignored = changes.every((change) => change.type === "remove" || change.type === "add");
+      if (ignored) {
+        if (changes.some((change) => change.type === "remove")) {
+          onInvalidConnection?.(
+            "Connections are synchronized with execution order. Reorder or delete steps to change the sequence."
+          );
+        }
+        return;
+      }
+
       internalEdgesChange(changes);
       onEdgesChange?.(changes);
     },
-    [internalEdgesChange, onEdgesChange]
+    [internalEdgesChange, onEdgesChange, onInvalidConnection]
   );
 
   // =========================================================
@@ -274,6 +302,7 @@ function WorkflowCanvasInner({
       nodesDraggable
       nodesConnectable
       elementsSelectable
+      deleteKeyCode={null}
       fitView
       fitViewOptions={{
         padding: 0.25,

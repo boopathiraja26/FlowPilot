@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
@@ -30,7 +30,7 @@ import { ExecuteWorkflowModal, RuntimeTriggerPayload } from "@/components/execut
 import { createStep, updateStep, deleteStep, reorderSteps } from "@/lib/api/workflowStep";
 import { api } from "@/lib/api";
 import { Workflow, WorkflowStep } from "@/types/workflow";
-import { WorkflowStepNodeData } from "@/lib/workflow-flow";
+import { WorkflowStepNodeData, getStepCanvasPosition, withStepCanvasPosition } from "@/lib/workflow-flow";
 
 // =========================================================
 // Status styles
@@ -115,15 +115,18 @@ export default function WorkflowBuilderPage() {
   const [isTogglingActivation, setIsTogglingActivation] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [canvasPositions, setCanvasPositions] = useState<Record<string, { x: number; y: number }>>({});
+  const [hasUnsavedLayout, setHasUnsavedLayout] = useState(false);
 
   const autoLayoutRef = useRef<(() => void) | null>(null);
   const fitViewRef = useRef<(() => void) | null>(null);
+  const lastSavedWorkflowDetailsRef = useRef<{ title: string; description: string }>({ title: "", description: "" });
 
   // =========================================================
   // Load workflow
   // =========================================================
 
-  async function fetchWorkflow(options?: { preserveSelection?: boolean }) {
+  async function fetchWorkflow(options?: { preserveSelection?: boolean; preserveLayoutDirty?: boolean }) {
     if (!workflowId) return;
 
     if (!workflow) {
@@ -141,6 +144,13 @@ export default function WorkflowBuilderPage() {
       setWorkflow(normalized);
       setDraftTitle(normalized.title ?? "");
       setDraftDescription(normalized.description ?? "");
+      lastSavedWorkflowDetailsRef.current = {
+        title: normalized.title ?? "",
+        description: normalized.description ?? "",
+      };
+      if (!options?.preserveLayoutDirty) {
+        setHasUnsavedLayout(false);
+      }
       if (options?.preserveSelection && selectedStepId) {
         const stillExists = normalized.steps.some((s) => s.id === selectedStepId);
         if (!stillExists) setSelectedStepId(null);
@@ -178,6 +188,26 @@ export default function WorkflowBuilderPage() {
   }, [selectedStepId, selectedStepIndex]);
 
   // Node click
+  const hasUnsavedDetails = useMemo(() => {
+    if (!workflow) return false;
+    return (
+      draftTitle.trim() !== (lastSavedWorkflowDetailsRef.current.title ?? "").trim() ||
+      (draftDescription.trim() || "") !== (lastSavedWorkflowDetailsRef.current.description ?? "").trim()
+    );
+  }, [draftDescription, draftTitle, workflow]);
+
+  const hasUnsavedChanges = hasUnsavedDetails || hasUnsavedLayout;
+
+  useEffect(() => {
+    if (!hasUnsavedChanges) return;
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [hasUnsavedChanges]);
+
   function handleNodeClick(_event: React.MouseEvent, node: Node<WorkflowStepNodeData>) {
     setSelectedStepId(node.id);
     setActionError(null);
@@ -188,8 +218,29 @@ export default function WorkflowBuilderPage() {
     setActionError(null);
   }
 
+  function handleCanvasPositionsChange(nextPositions: Record<string, { x: number; y: number }>) {
+    setCanvasPositions(nextPositions);
+    if (!workflow) return;
+    const dirty = orderedSteps.some((step) => {
+      const current = nextPositions[step.id];
+      const saved = getStepCanvasPosition(step);
+      if (!current || !saved) return Boolean(current || saved);
+      return Math.round(current.x) !== Math.round(saved.x) || Math.round(current.y) !== Math.round(saved.y);
+    });
+    setHasUnsavedLayout(dirty);
+  }
+
+  function handleInvalidConnection(message: string) {
+    setActionError(message);
+    setTimeout(() => setActionError((prev) => (prev === message ? null : prev)), 3500);
+  }
+
   // Toolbar
   function handleAddStepClick() {
+    if (hasUnsavedChanges) {
+      const proceed = window.confirm("You have unsaved workflow changes. Continue adding a step? Unsaved layout/detail edits may be lost if the workflow reloads.");
+      if (!proceed) return;
+    }
     setIsAddDialogOpen(true);
   }
 
@@ -200,14 +251,43 @@ export default function WorkflowBuilderPage() {
   function handleAutoLayout() {
     if (autoLayoutRef.current) {
       autoLayoutRef.current();
-      setActionMessage("Workflow layout arranged.");
-      setTimeout(() => setActionMessage(null), 2500);
+      setHasUnsavedLayout(true);
+      setActionError(null);
+      setActionMessage("Workflow layout arranged. Save changes to persist node positions.");
     }
+  }
+
+  async function persistLayoutPositions(steps: WorkflowStep[], positions: Record<string, { x: number; y: number }>) {
+    const updates = steps
+      .map((step) => {
+        const pos = positions[step.id];
+        if (!pos) return null;
+        const saved = getStepCanvasPosition(step);
+        const same = saved && Math.round(saved.x) === Math.round(pos.x) && Math.round(saved.y) === Math.round(pos.y);
+        if (same) return null;
+        return { step, position: { x: Math.round(pos.x), y: Math.round(pos.y) } };
+      })
+      .filter((item): item is { step: WorkflowStep; position: { x: number; y: number } } => Boolean(item));
+
+    for (const { step, position } of updates) {
+      const config = withStepCanvasPosition(
+        (step.config as Record<string, unknown>) ?? {},
+        position
+      );
+      await updateStep(step.id, { config });
+    }
+
+    return updates.length;
   }
 
   // Create step
   async function handleCreateStep(values: { type: WorkflowStep["type"]; name: string }) {
     if (!workflow) return;
+
+    if (hasUnsavedChanges) {
+      setActionError("Save workflow changes before adding a new step to avoid losing unsaved details or layout positions.");
+      return;
+    }
 
     setIsStepSaving(true);
     setActionError(null);
@@ -235,18 +315,24 @@ export default function WorkflowBuilderPage() {
   async function handleSaveStep(values: StepEditorValues) {
     if (!workflow || !selectedStep) return;
 
+    if (hasUnsavedLayout) {
+      const proceed = window.confirm("Canvas layout positions have unsaved changes. Save this step now? Use Save changes afterward to persist layout positions for all nodes.");
+      if (!proceed) return;
+    }
+
     setIsStepSaving(true);
     setActionError(null);
     setActionMessage(null);
 
     try {
+      const existingPos = canvasPositions[selectedStep.id] ?? getStepCanvasPosition(selectedStep);
       await updateStep(selectedStep.id, {
         name: values.name,
         type: values.type,
-        config: values.config,
+        config: withStepCanvasPosition(values.config as Record<string, unknown>, existingPos),
       });
 
-      await fetchWorkflow({ preserveSelection: true });
+      await fetchWorkflow({ preserveSelection: true, preserveLayoutDirty: true });
       setActionMessage("Step changes saved.");
     } catch (err: any) {
       setActionError(err?.response?.data?.message || "Couldn't save the step. Please try again.");
@@ -259,7 +345,12 @@ export default function WorkflowBuilderPage() {
   async function handleDeleteStep() {
     if (!workflow || !selectedStep) return;
 
-    const confirmed = window.confirm(`Delete step “${selectedStep.name}”? This cannot be undone.`);
+    if (hasUnsavedChanges) {
+      setActionError("Save or discard unsaved workflow changes before deleting a step.");
+      return;
+    }
+
+    const confirmed = window.confirm(`Delete step "${selectedStep.name}"? This cannot be undone.`);
     if (!confirmed) return;
 
     setIsStepSaving(true);
@@ -280,6 +371,11 @@ export default function WorkflowBuilderPage() {
 
   async function handleDuplicateStep() {
     if (!workflow || !selectedStep) return;
+
+    if (hasUnsavedChanges) {
+      setActionError("Save workflow changes before duplicating a step to avoid losing unsaved details or layout positions.");
+      return;
+    }
 
     setIsDuplicatingStep(true);
     setActionError(null);
@@ -306,6 +402,11 @@ export default function WorkflowBuilderPage() {
     const targetIndex = direction === "left" ? selectedStepIndex - 1 : selectedStepIndex + 1;
     if (targetIndex < 0 || targetIndex >= orderedSteps.length) return;
 
+    if (hasUnsavedLayout) {
+      setActionError("Save layout changes before reordering steps so node positions and execution order stay consistent.");
+      return;
+    }
+
     const nextOrder = [...orderedSteps];
     const [moved] = nextOrder.splice(selectedStepIndex, 1);
     nextOrder.splice(targetIndex, 0, moved);
@@ -316,7 +417,7 @@ export default function WorkflowBuilderPage() {
 
     try {
       await reorderSteps(workflow.id, nextOrder.map((s) => s.id));
-      await fetchWorkflow({ preserveSelection: true });
+      await fetchWorkflow({ preserveSelection: true, preserveLayoutDirty: true });
       setActionMessage(direction === "left" ? "Step moved earlier in the sequence." : "Step moved later in the sequence.");
     } catch (err: any) {
       setActionError(err?.response?.data?.message || "Couldn't reorder steps. Please try again.");
@@ -324,12 +425,11 @@ export default function WorkflowBuilderPage() {
       setIsReordering(false);
     }
   }
-
   function syncWorkflowDetailsDraft(next: Partial<Workflow>) {
     setWorkflow((prev) => (prev ? { ...prev, ...next } : prev));
   }
 
-  // Save workflow
+  // Save workflow details and persisted canvas layout positions
   async function handleSaveWorkflow() {
     if (!workflow) return;
 
@@ -344,31 +444,54 @@ export default function WorkflowBuilderPage() {
     setActionMessage(null);
 
     try {
-      const response = await api.put(`/workflows/${workflow.id}`, {
-        title,
-        description: draftDescription.trim() || null,
-        status: workflow.status,
-      });
+      let detailsSaved = false;
+      if (hasUnsavedDetails) {
+        const response = await api.put(`/workflows/${workflow.id}`, {
+          title,
+          description: draftDescription.trim() || null,
+          status: workflow.status,
+        });
 
-      const updated = response.data.data.workflow as Workflow;
+        const updated = response.data.data.workflow as Workflow;
+        setWorkflow((prev) =>
+          prev
+            ? {
+                ...prev,
+                title: updated.title,
+                description: updated.description,
+                status: updated.status,
+                updatedAt: updated.updatedAt ?? prev.updatedAt,
+              }
+            : prev
+        );
+        setDraftTitle(updated.title ?? title);
+        setDraftDescription(updated.description ?? "");
+        lastSavedWorkflowDetailsRef.current = {
+          title: updated.title ?? title,
+          description: updated.description ?? "",
+        };
+        detailsSaved = true;
+      }
 
-      setWorkflow((prev) =>
-        prev
-          ? {
-              ...prev,
-              title: updated.title,
-              description: updated.description,
-              status: updated.status,
-              updatedAt: updated.updatedAt,
-            }
-          : prev
-      );
-      setDraftTitle(updated.title ?? title);
-      setDraftDescription(updated.description ?? "");
+      let layoutSavedCount = 0;
+      if (hasUnsavedLayout) {
+        layoutSavedCount = await persistLayoutPositions(orderedSteps, canvasPositions);
+      }
 
-      setActionMessage("Workflow details saved.");
+      await fetchWorkflow({ preserveSelection: true });
+      setHasUnsavedLayout(false);
+
+      if (detailsSaved && layoutSavedCount > 0) {
+        setActionMessage("Workflow details and canvas layout saved.");
+      } else if (layoutSavedCount > 0) {
+        setActionMessage("Canvas layout saved.");
+      } else if (detailsSaved) {
+        setActionMessage("Workflow details saved.");
+      } else {
+        setActionMessage("No workflow changes to save.");
+      }
     } catch (err: any) {
-      setActionError(err?.response?.data?.message || "Couldn't save the workflow. Please try again.");
+      setActionError(err?.response?.data?.message || "Couldn't save workflow changes. Please try again.");
     } finally {
       setIsSaving(false);
     }
@@ -548,14 +671,23 @@ export default function WorkflowBuilderPage() {
               </div>
 
               <div className="flex shrink-0 flex-wrap items-center gap-2">
+                {hasUnsavedChanges ? (
+                  <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700">
+                    Unsaved changes
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
+                    All changes saved
+                  </span>
+                )}
                 <button
                   type="button"
                   onClick={handleSaveWorkflow}
-                  disabled={isBusy}
+                  disabled={isBusy || !hasUnsavedChanges}
                   className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-sm transition-all hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Save className="h-3.5 w-3.5 text-slate-500" />
-                  <span>{isSaving ? "Saving..." : "Save details"}</span>
+                  <span>{isSaving ? "Saving..." : "Save changes"}</span>
                 </button>
 
                 <button
@@ -627,6 +759,8 @@ export default function WorkflowBuilderPage() {
                 workflow={workflow}
                 onNodeClick={handleNodeClick}
                 onNodeDragStop={handleNodeDragStop}
+                onPositionsChange={handleCanvasPositionsChange}
+                onInvalidConnection={handleInvalidConnection}
                 onAutoLayoutRef={(fn) => { autoLayoutRef.current = fn; }}
                 onFitViewRef={(fn) => { fitViewRef.current = fn; }}
               />
@@ -641,7 +775,7 @@ export default function WorkflowBuilderPage() {
                       <div className="min-w-0">
                         <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Selected step</p>
                         <p className="mt-0.5 truncate text-sm font-semibold text-slate-900">{selectedStep.name}</p>
-                        <p className="mt-0.5 text-xs text-slate-500">Position {selectedStepIndex + 1} of {orderedSteps.length} · {selectedStep.type}</p>
+                        <p className="mt-0.5 text-xs text-slate-500">Position {selectedStepIndex + 1} of {orderedSteps.length} Â· {selectedStep.type}</p>
                       </div>
                       <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-600">
                         <ArrowLeftRight className="mr-1 h-3 w-3" /> Sequence

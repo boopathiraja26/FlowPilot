@@ -31,7 +31,7 @@ export const reorderWorkflowStepsSchema = z.object({
       id: z.string().uuid(),
       stepOrder: z.number().int().positive(),
     })
-  ),
+  ).min(1),
 });
 
 export type CreateWorkflowStepInput =

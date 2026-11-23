@@ -204,11 +204,44 @@ export async function reorderWorkflowSteps(
 ): Promise<void> {
   await getOwnedWorkflow(workflowId, userId);
 
+  const existingSteps = await prisma.workflowStep.findMany({
+    where: { workflowId },
+    select: { id: true },
+    orderBy: { stepOrder: "asc" },
+  });
+
+  if (steps.length !== existingSteps.length) {
+    throw new ApiError(400, "Invalid reorder payload: include every workflow step exactly once.");
+  }
+
+  const existingIds = new Set(existingSteps.map((s) => s.id));
+  const seenIds = new Set<string>();
+  const seenOrders = new Set<number>();
+  const expectedOrders = new Set(existingSteps.map((_s, index) => index + 1));
+
+  for (const step of steps) {
+    if (!existingIds.has(step.id)) {
+      throw new ApiError(400, "Invalid reorder payload: step does not belong to this workflow.");
+    }
+    if (seenIds.has(step.id)) {
+      throw new ApiError(400, "Invalid reorder payload: duplicate step IDs are not allowed.");
+    }
+    if (seenOrders.has(step.stepOrder)) {
+      throw new ApiError(400, "Invalid reorder payload: duplicate step positions are not allowed.");
+    }
+    if (!expectedOrders.has(step.stepOrder)) {
+      throw new ApiError(400, "Invalid reorder payload: step positions must form a contiguous sequence.");
+    }
+    seenIds.add(step.id);
+    seenOrders.add(step.stepOrder);
+  }
+
   await prisma.$transaction(
     steps.map((step) =>
       prisma.workflowStep.update({
         where: {
           id: step.id,
+          workflowId,
         },
         data: {
           stepOrder: step.stepOrder,
