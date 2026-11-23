@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Node } from "reactflow";
@@ -218,22 +218,41 @@ export default function WorkflowBuilderPage() {
     setActionError(null);
   }
 
-  function handleCanvasPositionsChange(nextPositions: Record<string, { x: number; y: number }>) {
-    setCanvasPositions(nextPositions);
-    if (!workflow) return;
-    const dirty = orderedSteps.some((step) => {
-      const current = nextPositions[step.id];
-      const saved = getStepCanvasPosition(step);
-      if (!current || !saved) return Boolean(current || saved);
-      return Math.round(current.x) !== Math.round(saved.x) || Math.round(current.y) !== Math.round(saved.y);
-    });
-    setHasUnsavedLayout(dirty);
-  }
+  const handleCanvasPositionsChange = useCallback(
+    (nextPositions: Record<string, { x: number; y: number }>) => {
+      setCanvasPositions((prev) => {
+        const prevKeys = Object.keys(prev);
+        const nextKeys = Object.keys(nextPositions);
+        if (prevKeys.length === nextKeys.length) {
+          const same = nextKeys.every((key) => {
+            const a = prev[key];
+            const b = nextPositions[key];
+            if (!a || !b) return false;
+            return Math.round(a.x) === Math.round(b.x) && Math.round(a.y) === Math.round(b.y);
+          });
+          if (same) return prev;
+        }
+        return nextPositions;
+      });
 
-  function handleInvalidConnection(message: string) {
+      if (!workflow) return;
+      const steps = [...(workflow.steps ?? [])].sort((a, b) => a.stepOrder - b.stepOrder);
+      const dirty = steps.some((step) => {
+        const current = nextPositions[step.id];
+        const saved = getStepCanvasPosition(step);
+        if (!current && !saved) return false;
+        if (!current || !saved) return true;
+        return Math.round(current.x) !== Math.round(saved.x) || Math.round(current.y) !== Math.round(saved.y);
+      });
+      setHasUnsavedLayout((prev) => (prev === dirty ? prev : dirty));
+    },
+    [workflow]
+  );
+
+  const handleInvalidConnection = useCallback((message: string) => {
     setActionError(message);
     setTimeout(() => setActionError((prev) => (prev === message ? null : prev)), 3500);
-  }
+  }, []);
 
   // Toolbar
   function handleAddStepClick() {

@@ -101,6 +101,28 @@ function WorkflowCanvasInner({
 
   // Stable persistent node position map across the entire editing session
   const positionsMapRef = useRef<Record<string, { x: number; y: number }>>({});
+  const onPositionsChangeRef = useRef(onPositionsChange);
+  const onInvalidConnectionRef = useRef(onInvalidConnection);
+  const lastEmittedPositionsSignatureRef = useRef<string>("");
+
+  useEffect(() => {
+    onPositionsChangeRef.current = onPositionsChange;
+  }, [onPositionsChange]);
+
+  useEffect(() => {
+    onInvalidConnectionRef.current = onInvalidConnection;
+  }, [onInvalidConnection]);
+
+  const emitPositionsIfChanged = useCallback((positions: Record<string, { x: number; y: number }>) => {
+    const signature = JSON.stringify(
+      Object.keys(positions)
+        .sort()
+        .map((id) => [id, Math.round(positions[id]?.x ?? 0), Math.round(positions[id]?.y ?? 0)])
+    );
+    if (signature === lastEmittedPositionsSignatureRef.current) return;
+    lastEmittedPositionsSignatureRef.current = signature;
+    onPositionsChangeRef.current?.({ ...positions });
+  }, []);
 
   const { nodes: initialNodes, edges: initialEdges, positions: initialPositions } =
     buildWorkflowFlow(workflow, positionsMapRef.current);
@@ -139,12 +161,12 @@ function WorkflowCanvasInner({
 
     setNodes(newNodes);
     setEdges(newEdges);
-    onPositionsChange?.({ ...freshPositions });
+    emitPositionsIfChanged({ ...freshPositions });
 
     setTimeout(() => {
       fitView({ padding: 0.25, duration: 400 });
     }, 50);
-  }, [workflow, fitView, setNodes, setEdges, onPositionsChange]);
+  }, [workflow, fitView, setNodes, setEdges, emitPositionsIfChanged]);
 
   const handleFitView = useCallback(() => {
     fitView({ padding: 0.25, duration: 300 });
@@ -174,7 +196,6 @@ function WorkflowCanvasInner({
       buildWorkflowFlow(workflow, positionsMapRef.current, { preferPersisted: true });
 
     positionsMapRef.current = updatedPositions;
-    onPositionsChange?.({ ...updatedPositions });
 
     // Apply active execution states if executingStepId is provided
     const updatedNodes = nextNodes.map((n) => {
@@ -200,7 +221,10 @@ function WorkflowCanvasInner({
 
     setNodes(updatedNodes);
     setEdges(updatedEdges);
-  }, [workflow, executingStepId, setNodes, setEdges, onPositionsChange]);
+
+    // Emit only when positions actually changed to avoid sync loops with parent state updates.
+    emitPositionsIfChanged({ ...updatedPositions });
+  }, [workflow, executingStepId, setNodes, setEdges, emitPositionsIfChanged]);
 
   // =========================================================
   // Node Drag Handlers (Instant Position Recording)
@@ -230,10 +254,10 @@ function WorkflowCanvasInner({
       if (node?.position) {
         positionsMapRef.current[node.id] = { ...node.position };
       }
-      onPositionsChange?.({ ...positionsMapRef.current });
+      emitPositionsIfChanged({ ...positionsMapRef.current });
       onNodeDragStop?.(event, node, nodes);
     },
-    [onNodeDragStop, nodes, onPositionsChange]
+    [onNodeDragStop, nodes, emitPositionsIfChanged]
   );
 
   // =========================================================
@@ -252,7 +276,7 @@ function WorkflowCanvasInner({
       );
 
       if (!isAdjacentInOrder) {
-        onInvalidConnection?.(
+        onInvalidConnectionRef.current?.(
           "Invalid connection. FlowPilot executes steps sequentially, so branching and cycles are not supported. Use reorder controls to change execution order."
         );
         return;
@@ -261,7 +285,7 @@ function WorkflowCanvasInner({
       // Adjacent linear connection already represented by derived edges/order.
       onConnect?.(connection);
     },
-    [workflow.steps, onConnect, onInvalidConnection]
+    [workflow.steps, onConnect]
   );
 
   const handleEdgesChange = useCallback(
@@ -271,7 +295,7 @@ function WorkflowCanvasInner({
       const ignored = changes.every((change) => change.type === "remove" || change.type === "add");
       if (ignored) {
         if (changes.some((change) => change.type === "remove")) {
-          onInvalidConnection?.(
+          onInvalidConnectionRef.current?.(
             "Connections are synchronized with execution order. Reorder or delete steps to change the sequence."
           );
         }
@@ -281,7 +305,7 @@ function WorkflowCanvasInner({
       internalEdgesChange(changes);
       onEdgesChange?.(changes);
     },
-    [internalEdgesChange, onEdgesChange, onInvalidConnection]
+    [internalEdgesChange, onEdgesChange]
   );
 
   // =========================================================
