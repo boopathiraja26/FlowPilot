@@ -559,19 +559,22 @@ export function StepEditor({
           <div className="rounded-xl border border-purple-200 bg-purple-50/50 p-3 space-y-2">
             <div className="flex items-center gap-1.5 text-xs font-bold text-purple-700">
               <Sparkles className="h-3.5 w-3.5" />
-              <span>Gemini AI Prompt</span>
+              <span>Gemini AI instructions</span>
             </div>
 
             <textarea
-              rows={4}
+              rows={5}
               value={form.prompt}
               disabled={isSaving}
               onChange={(e) =>
                 updateField("prompt", e.target.value)
               }
-              placeholder="e.g. Generate a personalized welcome email for {{employee_name}} in {{department}}..."
+              placeholder="Describe what the AI should produce. You can use templates like {{trigger.employee_name}} and reference prior step outputs in instructions."
               className={inputClasses}
             />
+            <p className="text-[11px] text-slate-600">
+              The execution context (trigger and prior step outputs) is provided to the AI step. Write clear instructions for the content you want generated.
+            </p>
           </div>
         )}
 
@@ -580,8 +583,11 @@ export function StepEditor({
           <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-3 space-y-3">
             <div className="flex items-center gap-1.5 text-xs font-bold text-blue-700">
               <Mail className="h-3.5 w-3.5" />
-              <span>SMTP Email Dispatch</span>
+              <span>Email action</span>
             </div>
+            <p className="text-[11px] text-slate-600">
+              Configure recipient, subject, and body. Templates like <code>{'{{trigger.employee_email}}'}</code> or <code>{'{{step_2.output}}'}</code> are supported. Leave fields blank to use workflow defaults where available.
+            </p>
 
             <div>
               <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">
@@ -593,7 +599,7 @@ export function StepEditor({
                 onChange={(e) =>
                   updateField("emailTo", e.target.value)
                 }
-                placeholder="recipient@domain.com or {{employee_email}}"
+                placeholder="recipient@domain.com or {{trigger.employee_email}}"
                 className={inputClasses}
               />
             </div>
@@ -608,23 +614,23 @@ export function StepEditor({
                 onChange={(e) =>
                   updateField("emailSubject", e.target.value)
                 }
-                placeholder="Welcome to {{company_name}}!"
+                placeholder="Subject (supports templates)"
                 className={inputClasses}
               />
             </div>
 
             <div>
               <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                Email Body Template
+                Email body (text or HTML)
               </label>
               <textarea
-                rows={4}
+                rows={5}
                 value={form.emailBody}
                 disabled={isSaving}
                 onChange={(e) =>
                   updateField("emailBody", e.target.value)
                 }
-                placeholder="Email content or HTML..."
+                placeholder="Email content, HTML, or templates using trigger/prior step outputs"
                 className={inputClasses}
               />
             </div>
@@ -640,11 +646,12 @@ export function StepEditor({
             </div>
 
             <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">
-              Wait Duration (milliseconds)
+              Wait duration (milliseconds)
             </label>
             <input
               type="number"
               min={0}
+              step={100}
               value={form.delayMs}
               disabled={isSaving}
               onChange={(e) =>
@@ -655,6 +662,9 @@ export function StepEditor({
               }
               className={inputClasses}
             />
+            <p className="text-[11px] text-slate-600">
+              {Number.isFinite(form.delayMs) ? `${(form.delayMs / 1000).toFixed(form.delayMs % 1000 === 0 ? 0 : 2)} seconds` : "Enter a non-negative delay in milliseconds."}
+            </p>
           </div>
         )}
 
@@ -666,7 +676,10 @@ export function StepEditor({
               <span>Outgoing HTTP Webhook Action</span>
             </div>
             <p className="text-[11px] text-pink-700/90">
-              Sends an HTTP request to an external destination URL. This is different from an incoming webhook <strong>TRIGGER</strong>. A valid destination URL is required.
+              Sends an HTTP request to an external destination URL. This is different from an incoming webhook <strong>TRIGGER</strong>. A valid destination URL is required. Unsafe/private destinations are blocked for security.
+            </p>
+            <p className="text-[11px] text-slate-600">
+              Templates are supported in URL/headers/body (e.g. <code>{'{{trigger.employee_email}}'}</code>, <code>{'{{step_1.output}}'}</code>). Configure custom headers or JSON body via Raw JSON config if needed.
             </p>
 
             <div>

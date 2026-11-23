@@ -111,7 +111,9 @@ async function createExecutionLog(
     type: WorkflowStepType;
   },
   status: ExecutionStatus,
-  message?: string
+  message?: string,
+  startedAt: Date = new Date(),
+  completedAt: Date = startedAt
 ) {
   return prisma.executionLog.create({
     data: {
@@ -121,8 +123,8 @@ async function createExecutionLog(
       stepType: step.type,
       status,
       message,
-      startedAt: new Date(),
-      completedAt: new Date(),
+      startedAt,
+      completedAt,
     },
   });
 }
@@ -225,6 +227,43 @@ function resolveAndValidateOutgoingWebhookUrl(
 // Step executor with Execution Context resolution
 // =========================================================
 
+function getLatestAiOutput(context: Record<string, any>): string | undefined {
+  const entries = Object.entries(context)
+    .filter(([key, value]) => /^step_\d+$/.test(key) && value && typeof value === "object")
+    .sort((a, b) => {
+      const aNum = Number(a[0].split("_")[1] || 0);
+      const bNum = Number(b[0].split("_")[1] || 0);
+      return bNum - aNum;
+    });
+
+  for (const [, value] of entries) {
+    const output = (value as Record<string, unknown>).output;
+    if (typeof output === "string" && output.trim()) {
+      return output;
+    }
+  }
+  return undefined;
+}
+
+function buildExecutionContextSummary(context: Record<string, any>): string {
+  try {
+    const summary = Object.fromEntries(
+      Object.entries(context).filter(([key]) => key === "trigger" || /^step_\d+$/.test(key))
+    );
+    const json = JSON.stringify(summary);
+    if (!json) return "{}";
+    return json.length > 6000 ? `${json.slice(0, 6000)}…` : json;
+  } catch {
+    return "{}";
+  }
+}
+
+function toErrorMessage(error: unknown): string {
+  if (error instanceof ApiError) return error.message;
+  if (error instanceof Error) return error.message || "Execution failed";
+  return "Execution failed";
+}
+
 async function executeSingleStep(
   step: WorkflowStep,
   context: Record<string, any>,
@@ -267,24 +306,31 @@ async function executeSingleStep(
 
     case "AI": {
       const trigger = context.trigger || {};
-
       const config = (step.config as Record<string, unknown>) ?? {};
 
-      const instructions =
-        typeof config.prompt === "string"
+      const rawInstructions =
+        typeof config.prompt === "string" && config.prompt.trim()
           ? config.prompt
           : "Generate a professional welcome email.";
+      const instructions = resolveTemplate(rawInstructions, context);
+      const contextSummary = buildExecutionContextSummary(context);
 
       const prompt = `
-You are an HR assistant.
+You are an AI assistant running inside a FlowPilot workflow step.
 
-Employee Name: ${trigger.employee_name}
-Employee Email: ${trigger.employee_email}
-Department: ${trigger.department}
-Job Title: ${trigger.job_title}
-Company: ${trigger.company_name}
-Manager: ${trigger.manager_name}
-Start Date: ${trigger.start_date}
+Use the available workflow context and prior step outputs when relevant. If specific fields are missing, produce the best useful result without inventing facts.
+
+Trigger context:
+- Employee Name: ${trigger.employee_name ?? ""}
+- Employee Email: ${trigger.employee_email ?? ""}
+- Department: ${trigger.department ?? ""}
+- Job Title: ${trigger.job_title ?? ""}
+- Company: ${trigger.company_name ?? ""}
+- Manager: ${trigger.manager_name ?? ""}
+- Start Date: ${trigger.start_date ?? ""}
+
+Workflow context (JSON):
+${contextSummary}
 
 Instructions:
 ${instructions}
@@ -301,59 +347,68 @@ ${instructions}
 
     case "EMAIL": {
       const trigger = context.trigger || {};
-      const aiOutput = context.step_2?.output || context.step_1?.output;
+      const config = (step.config as Record<string, unknown>) ?? {};
 
-      if (!trigger.employee_email) {
-        throw new Error("Employee email is missing.");
+      const configuredTo = typeof config.to === "string" ? resolveTemplate(config.to, context).trim() : "";
+      const configuredSubject = typeof config.subject === "string" ? resolveTemplate(config.subject, context).trim() : "";
+      const configuredBody = typeof config.body === "string" ? resolveTemplate(config.body, context).trim() : "";
+
+      const fallbackTo = typeof trigger.employee_email === "string" ? trigger.employee_email.trim() : "";
+      const to = configuredTo || fallbackTo;
+      if (!to) {
+        throw new ApiError(400, "EMAIL action: recipient is missing. Configure a recipient or provide trigger employee_email.");
       }
 
-      const companyName = trigger.company_name || "FlowPilot";
-      const employeeName = trigger.employee_name || "Team Member";
-      const subject = `Welcome to ${companyName}, ${employeeName}! ðŸš€`;
+      const latestAiOutput = getLatestAiOutput(context) ?? (typeof context.step_2?.output === "string" ? context.step_2.output : undefined) ?? (typeof context.step_1?.output === "string" ? context.step_1.output : undefined);
+      const companyName = (trigger.company_name as string) || "FlowPilot";
+      const employeeName = (trigger.employee_name as string) || "Team Member";
 
-      const htmlContent = renderWelcomeEmailHtml(
-        trigger,
-        typeof aiOutput === "string" ? aiOutput : undefined
-      );
+      const subject = configuredSubject || `Welcome to ${companyName}, ${employeeName}!`;
+      const htmlContent = configuredBody || renderWelcomeEmailHtml(trigger, latestAiOutput);
 
-      await sendEmail(
-        trigger.employee_email,
-        subject,
-        htmlContent
-      );
+      try {
+        await sendEmail(to, subject, htmlContent);
+      } catch (error) {
+        const message = error instanceof Error && error.message ? error.message : "Email delivery failed";
+        throw new ApiError(502, `EMAIL action failed: ${message}`);
+      }
 
       return {
         success: true,
-        message: `Welcome email sent to ${trigger.employee_email}`,
+        message: `Email sent to ${to}`,
         output: {
-          to: trigger.employee_email,
+          to,
           subject,
           body: htmlContent,
         },
       };
     }
+
     case "WEBHOOK": {
       const config = (step.config as Record<string, unknown>) ?? {};
 
       const rawUrl = typeof config.url === "string" ? config.url : "";
       const url = resolveAndValidateOutgoingWebhookUrl(rawUrl, context, step);
 
-      const method =
-        typeof config.method === "string"
-          ? (config.method as
-              | "GET"
-              | "POST"
-              | "PUT"
-              | "PATCH"
-              | "DELETE")
-          : "POST";
+      const rawMethod = typeof config.method === "string" ? config.method.toUpperCase() : "POST";
+      const method = (["GET", "POST", "PUT", "PATCH", "DELETE"].includes(rawMethod) ? rawMethod : "POST") as
+        | "GET"
+        | "POST"
+        | "PUT"
+        | "PATCH"
+        | "DELETE";
 
       const rawHeaders =
-        typeof config.headers === "object" && config.headers !== null
-          ? (config.headers as Record<string, string>)
+        typeof config.headers === "object" && config.headers !== null && !Array.isArray(config.headers)
+          ? (config.headers as Record<string, unknown>)
           : {};
 
-      const headers = resolveObjectTemplates(rawHeaders, context);
+      const resolvedHeaders = resolveObjectTemplates(rawHeaders, context) as Record<string, unknown>;
+      const headers: Record<string, string> = {};
+      for (const [key, value] of Object.entries(resolvedHeaders)) {
+        if (value === undefined || value === null) continue;
+        headers[key] = typeof value === "string" ? value : JSON.stringify(value);
+      }
 
       let body = config.body;
       if (typeof body === "string") {
@@ -372,7 +427,11 @@ ${instructions}
       return {
         success: true,
         message:
-          typeof response === "string" ? response : JSON.stringify(response),
+          typeof response === "string"
+            ? response
+            : response === undefined
+            ? `Webhook request succeeded (${method} ${url})`
+            : JSON.stringify(response),
         output: response,
       };
     }
@@ -380,24 +439,29 @@ ${instructions}
     case "DELAY": {
       const config = (step.config as Record<string, unknown>) ?? {};
 
-      const milliseconds =
-        typeof config.milliseconds === "number"
-          ? config.milliseconds
-          : 5000;
+      let milliseconds: number | null = null;
+      if (typeof config.milliseconds === "number" && Number.isFinite(config.milliseconds)) {
+        milliseconds = config.milliseconds;
+      } else if (typeof config.seconds === "number" && Number.isFinite(config.seconds)) {
+        milliseconds = config.seconds * 1000;
+      } else if (typeof config.milliseconds === "string" && config.milliseconds.trim() !== "" && !Number.isNaN(Number(config.milliseconds))) {
+        milliseconds = Number(config.milliseconds);
+      } else if (typeof config.seconds === "string" && config.seconds.trim() !== "" && !Number.isNaN(Number(config.seconds))) {
+        milliseconds = Number(config.seconds) * 1000;
+      }
 
-      await new Promise((resolve) =>
-        setTimeout(resolve, milliseconds)
-      );
+      const safeMilliseconds = Math.max(0, Math.min(Math.floor(milliseconds ?? 5000), 10 * 60 * 1000));
+      await new Promise((resolve) => setTimeout(resolve, safeMilliseconds));
 
       return {
         success: true,
-        message: `Delayed for ${milliseconds} ms`,
-        output: { milliseconds },
+        message: `Delayed for ${safeMilliseconds} ms`,
+        output: { milliseconds: safeMilliseconds },
       };
     }
 
     default:
-      throw new Error("Unknown workflow step.");
+      throw new ApiError(400, `Unsupported workflow step type: ${String((step as { type?: unknown }).type ?? "unknown")}`);
   }
 }
 
@@ -432,41 +496,46 @@ async function executeLoadedWorkflow(
     for (let i = 0; i < workflow.steps.length; i++) {
       const step = workflow.steps[i];
       const stepKey = `step_${i + 1}`;
+      const startedAt = new Date();
 
       try {
         const result = await executeSingleStep(step, context, triggerInput);
 
-        // Store step output in execution context
-        if (step.type === "AI") {
-          context[stepKey] = { output: result.output };
-        } else if (step.type === "TRIGGER") {
+        // Store step output in execution context (preserve backward-compatible access patterns)
+        if (step.type === "TRIGGER") {
           context[stepKey] = result.output;
           context.trigger = result.output;
-        } else if (
-          typeof result.output === "object" &&
-          result.output !== null
-        ) {
-          context[stepKey] = result.output;
+        } else if (result.output && typeof result.output === "object" && !Array.isArray(result.output)) {
+          context[stepKey] = { ...(result.output as Record<string, unknown>), output: result.output };
         } else {
           context[stepKey] = { output: result.output };
         }
+
+        const completedAt = new Date();
+        const completedMessage =
+          typeof result.message === "string" && result.message.trim()
+            ? result.message
+            : step.type === "AI" && typeof result.output === "string"
+            ? result.output
+            : "Step completed";
 
         await createExecutionLog(
           execution.id,
           step,
           ExecutionStatus.COMPLETED,
-          step.type === "AI" && typeof result.output === "string"
-            ? result.output
-            : result.message
+          completedMessage,
+          startedAt,
+          completedAt
         );
       } catch (err) {
+        const completedAt = new Date();
         await createExecutionLog(
           execution.id,
           step,
           ExecutionStatus.FAILED,
-          err instanceof Error
-            ? err.message
-            : "Execution failed"
+          toErrorMessage(err),
+          startedAt,
+          completedAt
         );
 
         throw err;
