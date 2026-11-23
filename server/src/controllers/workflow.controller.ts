@@ -8,12 +8,15 @@ import {
   workflowIdParamSchema,
 } from "../validators/workflow.validation";
 import {
+  activateWorkflow,
   createWorkflow,
+  deactivateWorkflow,
   deleteWorkflow,
   getWorkflowById,
   getWorkflows,
   updateWorkflow,
 } from "../services/workflow.service";
+import { redactWorkflowSecrets } from "../utils/workflow-trigger";
 
 // =========================================================
 // Helpers
@@ -24,6 +27,14 @@ function getUserId(req: Request): string {
     throw new ApiError(401, "Authentication required");
   }
   return req.user.id;
+}
+
+function parseWorkflowId(req: Request) {
+  const parsedParams = workflowIdParamSchema.safeParse(req.params);
+  if (!parsedParams.success) {
+    throw new ApiError(400, "Validation failed", parsedParams.error.flatten().fieldErrors);
+  }
+  return parsedParams.data.id;
 }
 
 // =========================================================
@@ -43,7 +54,7 @@ export const create = asyncHandler(async (req: Request, res: Response) => {
   res.status(201).json({
     success: true,
     message: "Workflow created successfully",
-    data: { workflow },
+    data: { workflow: redactWorkflowSecrets(workflow) },
   });
 });
 
@@ -59,7 +70,7 @@ export const findAll = asyncHandler(async (req: Request, res: Response) => {
   res.status(200).json({
     success: true,
     message: "Workflows retrieved successfully",
-    data: { workflows },
+    data: { workflows: workflows.map((workflow) => redactWorkflowSecrets(workflow)) },
   });
 });
 
@@ -69,18 +80,14 @@ export const findAll = asyncHandler(async (req: Request, res: Response) => {
 
 export const findOne = asyncHandler(async (req: Request, res: Response) => {
   const userId = getUserId(req);
+  const workflowId = parseWorkflowId(req);
 
-  const parsedParams = workflowIdParamSchema.safeParse(req.params);
-  if (!parsedParams.success) {
-    throw new ApiError(400, "Validation failed", parsedParams.error.flatten().fieldErrors);
-  }
-
-  const workflow = await getWorkflowById(userId, parsedParams.data.id);
+  const workflow = await getWorkflowById(userId, workflowId);
 
   res.status(200).json({
     success: true,
     message: "Workflow retrieved successfully",
-    data: { workflow },
+    data: { workflow: redactWorkflowSecrets(workflow) },
   });
 });
 
@@ -90,23 +97,19 @@ export const findOne = asyncHandler(async (req: Request, res: Response) => {
 
 export const update = asyncHandler(async (req: Request, res: Response) => {
   const userId = getUserId(req);
-
-  const parsedParams = workflowIdParamSchema.safeParse(req.params);
-  if (!parsedParams.success) {
-    throw new ApiError(400, "Validation failed", parsedParams.error.flatten().fieldErrors);
-  }
+  const workflowId = parseWorkflowId(req);
 
   const parsedBody = updateWorkflowSchema.safeParse(req.body);
   if (!parsedBody.success) {
     throw new ApiError(400, "Validation failed", parsedBody.error.flatten().fieldErrors);
   }
 
-  const workflow = await updateWorkflow(userId, parsedParams.data.id, parsedBody.data);
+  const workflow = await updateWorkflow(userId, workflowId, parsedBody.data);
 
   res.status(200).json({
     success: true,
     message: "Workflow updated successfully",
-    data: { workflow },
+    data: { workflow: redactWorkflowSecrets(workflow) },
   });
 });
 
@@ -116,16 +119,46 @@ export const update = asyncHandler(async (req: Request, res: Response) => {
 
 export const remove = asyncHandler(async (req: Request, res: Response) => {
   const userId = getUserId(req);
+  const workflowId = parseWorkflowId(req);
 
-  const parsedParams = workflowIdParamSchema.safeParse(req.params);
-  if (!parsedParams.success) {
-    throw new ApiError(400, "Validation failed", parsedParams.error.flatten().fieldErrors);
-  }
-
-  await deleteWorkflow(userId, parsedParams.data.id);
+  await deleteWorkflow(userId, workflowId);
 
   res.status(200).json({
     success: true,
     message: "Workflow deleted successfully",
+  });
+});
+
+// =========================================================
+// POST /api/workflows/:id/activate
+// =========================================================
+
+export const activate = asyncHandler(async (req: Request, res: Response) => {
+  const userId = getUserId(req);
+  const workflowId = parseWorkflowId(req);
+
+  const workflow = await activateWorkflow(userId, workflowId);
+
+  res.status(200).json({
+    success: true,
+    message: "Workflow activated successfully",
+    data: { workflow: redactWorkflowSecrets(workflow) },
+  });
+});
+
+// =========================================================
+// POST /api/workflows/:id/deactivate
+// =========================================================
+
+export const deactivate = asyncHandler(async (req: Request, res: Response) => {
+  const userId = getUserId(req);
+  const workflowId = parseWorkflowId(req);
+
+  const workflow = await deactivateWorkflow(userId, workflowId);
+
+  res.status(200).json({
+    success: true,
+    message: "Workflow deactivated successfully",
+    data: { workflow: redactWorkflowSecrets(workflow) },
   });
 });

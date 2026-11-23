@@ -8,7 +8,9 @@ import {
   updateWorkflowStep,
   deleteWorkflowStep,
   reorderWorkflowSteps,
+  rotateWorkflowStepWebhookSecret,
 } from "../services/workflow-step.service";
+import { redactStepSecrets } from "../utils/workflow-trigger";
 
 import {
   workflowIdParamSchema,
@@ -67,7 +69,7 @@ export const create = asyncHandler(async (req: Request, res: Response) => {
     success: true,
     message: "Workflow step created successfully",
     data: {
-      step,
+      step: redactStepSecrets(step),
     },
   });
 });
@@ -109,7 +111,7 @@ export const update = asyncHandler(async (req: Request, res: Response) => {
     success: true,
     message: "Workflow step updated successfully",
     data: {
-      step,
+      step: redactStepSecrets(step),
     },
   });
 });
@@ -175,5 +177,37 @@ export const reorder = asyncHandler(async (req: Request, res: Response) => {
   res.status(200).json({
     success: true,
     message: "Workflow steps reordered successfully",
+  });
+});
+
+// =========================================================
+// POST /api/workflow-steps/:stepId/webhook-secret/rotate
+// =========================================================
+
+export const rotateWebhookSecret = asyncHandler(async (req: Request, res: Response) => {
+  const userId = getUserId(req);
+
+  const params = stepIdParamSchema.safeParse(req.params);
+
+  if (!params.success) {
+    throw new ApiError(
+      400,
+      "Validation failed",
+      params.error.flatten().fieldErrors
+    );
+  }
+
+  const { step, webhookSecret } = await rotateWorkflowStepWebhookSecret(
+    params.data.stepId,
+    userId
+  );
+
+  res.status(200).json({
+    success: true,
+    message: "Webhook secret rotated successfully",
+    data: {
+      step: redactStepSecrets(step),
+      webhookSecret,
+    },
   });
 });

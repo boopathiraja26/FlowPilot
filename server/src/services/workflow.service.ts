@@ -3,6 +3,7 @@ import { Workflow, WorkflowStep } from "@prisma/client";
 import { ApiError } from "../middleware/errorHandler";
 import { CreateWorkflowInput, UpdateWorkflowInput } from "../validators/workflow.validation";
 import prisma from "../lib/prisma";
+import { assertWorkflowCanActivate } from "../utils/workflow-trigger";
 
 // =========================================================
 // Types
@@ -101,7 +102,11 @@ export async function updateWorkflow(
   workflowId: string,
   input: UpdateWorkflowInput
 ): Promise<WorkflowWithSteps> {
-  await findOwnedWorkflowOrThrow(workflowId, userId);
+  const existing = await findOwnedWorkflowOrThrow(workflowId, userId);
+
+  if (input.status === "ACTIVE") {
+    assertWorkflowCanActivate(existing);
+  }
 
   const updatedWorkflow = await prisma.workflow.update({
     where: { id: workflowId },
@@ -118,6 +123,49 @@ export async function updateWorkflow(
   });
 
   return updatedWorkflow;
+}
+
+// =========================================================
+// activateWorkflow
+// =========================================================
+
+export async function activateWorkflow(
+  userId: string,
+  workflowId: string
+): Promise<WorkflowWithSteps> {
+  const workflow = await findOwnedWorkflowOrThrow(workflowId, userId);
+  assertWorkflowCanActivate(workflow);
+
+  return prisma.workflow.update({
+    where: { id: workflowId },
+    data: { status: "ACTIVE" },
+    include: {
+      steps: {
+        orderBy: { stepOrder: "asc" },
+      },
+    },
+  });
+}
+
+// =========================================================
+// deactivateWorkflow
+// =========================================================
+
+export async function deactivateWorkflow(
+  userId: string,
+  workflowId: string
+): Promise<WorkflowWithSteps> {
+  await findOwnedWorkflowOrThrow(workflowId, userId);
+
+  return prisma.workflow.update({
+    where: { id: workflowId },
+    data: { status: "DRAFT" },
+    include: {
+      steps: {
+        orderBy: { stepOrder: "asc" },
+      },
+    },
+  });
 }
 
 // =========================================================

@@ -11,9 +11,10 @@ import { generateAIResponse } from "./gemini.service";
 import { sendEmail } from "./email.service";
 import { executeWebhook } from "./webhook.service";
 import { resolveTemplate, resolveObjectTemplates, renderWelcomeEmailHtml } from "../utils/template";
+import { getTriggerStep, isValidWebhookSecret, normalizeTriggerConfig } from "../utils/workflow-trigger";
 
 // =========================================================
-// Get workflow with ownership + steps
+// Get workflow with ownership + steps (manual authenticated execution)
 // =========================================================
 
 async function getWorkflowForExecution(
@@ -36,6 +37,48 @@ async function getWorkflowForExecution(
 
   if (!workflow) {
     throw new ApiError(404, "Workflow not found");
+  }
+
+  return workflow;
+}
+
+// =========================================================
+// Get workflow for incoming webhook trigger (public, token-validated)
+// =========================================================
+
+async function getWorkflowForIncomingWebhook(
+  workflowId: string,
+  providedSecret: string | null
+) {
+  const workflow = await prisma.workflow.findUnique({
+    where: { id: workflowId },
+    include: {
+      steps: {
+        orderBy: { stepOrder: "asc" },
+      },
+    },
+  });
+
+  if (!workflow) {
+    throw new ApiError(404, "Workflow not found");
+  }
+
+  if (workflow.status !== "ACTIVE") {
+    throw new ApiError(403, "Workflow is not active");
+  }
+
+  const triggerStep = getTriggerStep(workflow);
+  if (!triggerStep) {
+    throw new ApiError(400, "Workflow has no trigger configured");
+  }
+
+  const triggerConfig = normalizeTriggerConfig(triggerStep.config);
+  if (triggerConfig.triggerMode !== "webhook") {
+    throw new ApiError(403, "Workflow is not configured for incoming webhook triggers");
+  }
+
+  if (!isValidWebhookSecret(providedSecret, triggerConfig.webhookSecret)) {
+    throw new ApiError(401, "Invalid webhook secret");
   }
 
   return workflow;
@@ -82,6 +125,100 @@ async function createExecutionLog(
       completedAt: new Date(),
     },
   });
+}
+
+// =========================================================
+// Workflow configuration validation (pre-execution)
+// =========================================================
+
+const WEBHOOK_PLACEHOLDER_HOSTS = ["api.example.com", "example.com", "www.example.com"];
+
+function isTemplatedValue(value: string): boolean {
+  return /\{\{[\s\S]*\}\}/.test(value);
+}
+
+function getOutgoingWebhookStepLabel(step: WorkflowStep): string {
+  return step.name?.trim() || `Step ${step.stepOrder}`;
+}
+
+function assertValidOutgoingWebhookUrl(url: string, stepLabel: string): void {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new ApiError(
+      400,
+      `${stepLabel} (WEBHOOK action): Webhook URL is invalid. Set a valid http(s) destination URL in the step editor.`
+    );
+  }
+
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new ApiError(
+      400,
+      `${stepLabel} (WEBHOOK action): Webhook URL must start with http:// or https://. Set a valid destination URL in the step editor.`
+    );
+  }
+
+  if (WEBHOOK_PLACEHOLDER_HOSTS.includes(parsed.hostname)) {
+    throw new ApiError(
+      400,
+      `${stepLabel} (WEBHOOK action): Webhook URL contains a placeholder hostname ("${parsed.hostname}"). Configure a real webhook destination URL in the step editor.`
+    );
+  }
+}
+
+function validateWorkflowConfigurationForExecution(steps: WorkflowStep[]): void {
+  for (const step of steps) {
+    // Incoming TRIGGER steps do not require an outgoing webhook URL.
+    if (step.type !== "WEBHOOK") {
+      continue;
+    }
+
+    const stepLabel = getOutgoingWebhookStepLabel(step);
+    const config = (step.config as Record<string, unknown>) ?? {};
+    const rawUrl = typeof config.url === "string" ? config.url.trim() : "";
+
+    if (!rawUrl) {
+      throw new ApiError(
+        400,
+        `${stepLabel} (WEBHOOK action): Webhook URL is not configured. Please set a real URL in the step editor.`
+      );
+    }
+
+    // URLs containing runtime templates cannot be fully validated before execution context is known.
+    if (isTemplatedValue(rawUrl)) {
+      continue;
+    }
+
+    assertValidOutgoingWebhookUrl(rawUrl, stepLabel);
+  }
+}
+
+function resolveAndValidateOutgoingWebhookUrl(
+  rawUrl: string,
+  context: Record<string, any>,
+  step: WorkflowStep
+): string {
+  const stepLabel = getOutgoingWebhookStepLabel(step);
+  const trimmedRawUrl = rawUrl.trim();
+
+  if (!trimmedRawUrl) {
+    throw new ApiError(
+      400,
+      `${stepLabel} (WEBHOOK action): Webhook URL is not configured. Please set a real URL in the step editor.`
+    );
+  }
+
+  const resolvedUrl = resolveTemplate(trimmedRawUrl, context).trim();
+  if (!resolvedUrl) {
+    throw new ApiError(
+      400,
+      `${stepLabel} (WEBHOOK action): Webhook URL resolved to an empty value. Provide a valid destination URL or template value in the step editor.`
+    );
+  }
+
+  assertValidOutgoingWebhookUrl(resolvedUrl, stepLabel);
+  return resolvedUrl;
 }
 
 // =========================================================
@@ -199,28 +336,7 @@ ${instructions}
       const config = (step.config as Record<string, unknown>) ?? {};
 
       const rawUrl = typeof config.url === "string" ? config.url : "";
-
-      if (!rawUrl) {
-        throw new Error("Webhook URL is not configured. Please set a real URL in the step editor.");
-      }
-
-      const url = resolveTemplate(rawUrl, context);
-
-      // Reject placeholder / example hostnames — they will never resolve.
-      const PLACEHOLDER_HOSTS = ["api.example.com", "example.com", "www.example.com"];
-      try {
-        const parsed = new URL(url);
-        if (PLACEHOLDER_HOSTS.includes(parsed.hostname)) {
-          throw new Error(
-            `Webhook URL contains a placeholder hostname ("${parsed.hostname}"). ` +
-            "Please configure a real webhook URL in the step editor before executing."
-          );
-        }
-      } catch (err) {
-        // Re-throw our own config errors; convert URL parse failures to a clear message.
-        if ((err as Error).message.startsWith("Webhook URL contains a placeholder")) throw err;
-        throw new Error(`Webhook URL is invalid: "${url}". Please set a valid URL in the step editor.`);
-      }
+      const url = resolveAndValidateOutgoingWebhookUrl(rawUrl, context, step);
 
       const method =
         typeof config.method === "string"
@@ -286,24 +402,19 @@ ${instructions}
 }
 
 // =========================================================
-// Execute workflow
+// Execute loaded workflow (shared core)
 // =========================================================
 
-export async function executeWorkflow(
-  workflowId: string,
-  userId: string,
+async function executeLoadedWorkflow(
+  workflow: { id: string; steps: WorkflowStep[] },
   triggerInput?: Record<string, unknown>
 ) {
-
-  // Load workflow
-  const workflow = await getWorkflowForExecution(
-    workflowId,
-    userId
-  );
-
   if (workflow.steps.length === 0) {
     throw new ApiError(400, "Workflow has no steps.");
   }
+
+  // Prevent execution of invalid workflow configurations before creating an execution record.
+  validateWorkflowConfigurationForExecution(workflow.steps);
 
   // Create execution record
   const execution = await createExecution(workflow.id);
@@ -331,7 +442,6 @@ export async function executeWorkflow(
         } else if (step.type === "TRIGGER") {
           context[stepKey] = result.output;
           context.trigger = result.output;
-        
         } else if (
           typeof result.output === "object" &&
           result.output !== null
@@ -397,6 +507,36 @@ export async function executeWorkflow(
 
     throw error;
   }
+}
+
+// =========================================================
+// Execute workflow (manual, authenticated owner)
+// =========================================================
+
+export async function executeWorkflow(
+  workflowId: string,
+  userId: string,
+  triggerInput?: Record<string, unknown>
+) {
+  const workflow = await getWorkflowForExecution(workflowId, userId);
+  return executeLoadedWorkflow(workflow, triggerInput);
+}
+
+// =========================================================
+// Execute workflow via incoming webhook trigger
+// =========================================================
+
+export async function executeWorkflowFromWebhook(
+  workflowId: string,
+  providedSecret: string | null,
+  triggerInput?: Record<string, unknown>
+) {
+  const workflow = await getWorkflowForIncomingWebhook(workflowId, providedSecret);
+  const payload = {
+    ...(triggerInput ?? {}),
+    _triggerSource: "webhook",
+  };
+  return executeLoadedWorkflow(workflow, payload);
 }
 
 // =========================================================

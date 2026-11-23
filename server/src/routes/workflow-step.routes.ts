@@ -5,6 +5,7 @@ import {
   update,
   remove,
   reorder,
+  rotateWebhookSecret,
 } from "../controllers/workflow-step.controller";
 
 import { requireAuth } from "../middleware/auth";
@@ -16,6 +17,8 @@ router.use(requireAuth);
 router.post("/workflows/:workflowId/steps", create);
 
 router.put("/workflows/:workflowId/steps/reorder", reorder);
+
+router.post("/workflow-steps/:stepId/webhook-secret/rotate", rotateWebhookSecret);
 
 router.put("/workflow-steps/:stepId", update);
 

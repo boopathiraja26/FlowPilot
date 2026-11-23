@@ -9,6 +9,10 @@ import {
   CreateWorkflowStepInput,
   UpdateWorkflowStepInput,
 } from "../validators/workflow-step.validation";
+import {
+  generateWebhookSecret,
+  mergeTriggerConfigPreservingSecret,
+} from "../utils/workflow-trigger";
 
 // =========================================================
 // Helpers
@@ -89,7 +93,12 @@ export async function updateWorkflowStep(
   userId: string,
   input: UpdateWorkflowStepInput
 ): Promise<WorkflowStep> {
-  await getOwnedStep(stepId, userId);
+  const existingStep = await getOwnedStep(stepId, userId);
+
+  const mergedConfig =
+    input.config !== undefined
+      ? mergeTriggerConfigPreservingSecret(input.config, existingStep.config)
+      : undefined;
 
   return prisma.workflowStep.update({
     where: {
@@ -104,13 +113,43 @@ export async function updateWorkflowStep(
         ? { type: input.type }
         : {}),
 
-      ...(input.config !== undefined
+      ...(mergedConfig !== undefined
         ? {
-            config: input.config as Prisma.JsonObject,
+            config: mergedConfig as Prisma.JsonObject,
           }
         : {}),
     },
   });
+}
+
+export async function rotateWorkflowStepWebhookSecret(
+  stepId: string,
+  userId: string
+): Promise<{ step: WorkflowStep; webhookSecret: string }> {
+  const existingStep = await getOwnedStep(stepId, userId);
+
+  if (existingStep.type !== "TRIGGER") {
+    throw new ApiError(400, "Webhook secret rotation is only available for TRIGGER steps");
+  }
+
+  const webhookSecret = generateWebhookSecret();
+  const existingConfig =
+    existingStep.config && typeof existingStep.config === "object" && !Array.isArray(existingStep.config)
+      ? ({ ...(existingStep.config as Record<string, unknown>) } as Record<string, unknown>)
+      : {};
+
+  const updatedStep = await prisma.workflowStep.update({
+    where: { id: stepId },
+    data: {
+      config: {
+        ...existingConfig,
+        triggerMode: "webhook",
+        webhookSecret,
+      } as Prisma.JsonObject,
+    },
+  });
+
+  return { step: updatedStep, webhookSecret };
 }
 
 // =========================================================

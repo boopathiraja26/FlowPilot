@@ -24,23 +24,42 @@ export function notFoundHandler(req: Request, res: Response, _next: NextFunction
 // Centralized error handler - place last, after notFoundHandler
 export function errorHandler(
   err: Error | ApiError,
-  _req: Request,
+  req: Request,
   res: Response,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _next: NextFunction
 ): void {
   const statusCode = err instanceof ApiError ? err.statusCode : 500;
-  const message = err.message || "Internal Server Error";
+  const isClientError = statusCode >= 400 && statusCode < 500;
+  const rawMessage = err.message || "Internal Server Error";
+  const isUnexpectedServerError = statusCode >= 500 && !(err instanceof ApiError);
 
-  if (!env.isProduction) {
+  // Preserve safe messages; avoid exposing internal/database details from unexpected server errors in production responses.
+  const message =
+    env.isProduction && isUnexpectedServerError ? "Internal Server Error" : rawMessage;
+
+  // Expected 4xx errors: concise logging without stack-trace noise.
+  // 5xx/unexpected errors: preserve useful diagnostics in development; avoid exposing stacks in production logs.
+  if (isClientError) {
     // eslint-disable-next-line no-console
-    console.error(err);
+    console.warn(`[http] ${statusCode} ${req.method} ${req.originalUrl} - ${rawMessage}`);
+  } else if (!env.isProduction) {
+    // eslint-disable-next-line no-console
+    console.error(`[http] ${statusCode} ${req.method} ${req.originalUrl}`, err);
+  } else {
+    // eslint-disable-next-line no-console
+    console.error(`[http] ${statusCode} ${req.method} ${req.originalUrl} - ${rawMessage}`);
   }
 
-  res.status(statusCode).json({
+  const responseBody: Record<string, unknown> = {
     success: false,
     message,
-    ...(err instanceof ApiError && err.details ? { details: err.details } : {}),
-    ...(env.isProduction ? {} : { stack: err.stack }),
-  });
+  };
+
+  if (err instanceof ApiError && err.details !== undefined) {
+    responseBody.details = err.details;
+  }
+
+  // Never expose stack traces/internal error stacks in API responses (dev or prod).
+  res.status(statusCode).json(responseBody);
 }
