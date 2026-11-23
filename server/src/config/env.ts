@@ -48,6 +48,17 @@ export const env = {
   gemini: {
     apiKey: required("GEMINI_API_KEY"),
     model: required("GEMINI_MODEL", "gemini-3.6-flash"),
+    fallbackModels: required("GEMINI_FALLBACK_MODEL", "")
+      .split(",")
+      .map((m) => m.trim())
+      .filter(Boolean),
+    timeoutMs: parseInt(
+      required(
+        "AI_GENERATION_TIMEOUT_MS",
+        process.env.GEMINI_TIMEOUT_MS ?? "30000"
+      ),
+      10
+    ),
   },
 
   rateLimit: {
