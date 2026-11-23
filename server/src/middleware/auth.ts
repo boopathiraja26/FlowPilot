@@ -80,6 +80,9 @@ export async function requireAuth(
         id: true,
         name: true,
         email: true,
+        avatar: true,
+        createdAt: true,
+        updatedAt: true,
       },
     });
 
@@ -87,7 +90,7 @@ export async function requireAuth(
       throw new ApiError(401, "User no longer exists");
     }
 
-    req.user = user;
+    req.user = user as any;
 
     next();
   } catch (error) {

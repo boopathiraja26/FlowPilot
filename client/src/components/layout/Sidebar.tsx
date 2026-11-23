@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity, GitFork, LayoutDashboard, PanelLeftClose, PanelLeftOpen, Plus, X } from "lucide-react";
+import { Activity, GitFork, LayoutDashboard, PanelLeftClose, PanelLeftOpen, Plus, Settings, X } from "lucide-react";
 import { FlowPilotWordmark } from "@/components/landing/FlowPilotWordmark";
 import { useUIStore } from "@/store/useUIStore";
 
@@ -10,6 +10,7 @@ const primaryNav = [
   { label: "Overview", href: "/dashboard", icon: LayoutDashboard },
   { label: "Workflows", href: "/dashboard/workflows", icon: GitFork },
   { label: "Executions", href: "/dashboard/executions", icon: Activity },
+  { label: "Settings", href: "/dashboard/settings", icon: Settings },
 ];
 
 function isNavActive(pathname: string | null, href: string): boolean {

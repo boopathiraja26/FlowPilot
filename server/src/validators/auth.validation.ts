@@ -50,3 +50,53 @@ export const loginSchema = z.object({
 });
 
 export type LoginInput = z.infer<typeof loginSchema>;
+
+// =========================================================
+// Profile update
+// =========================================================
+
+export const updateProfileSchema = z
+  .object({
+    name: nameField.optional(),
+    avatar: z
+      .union([
+        z
+          .string()
+          .trim()
+          .url("Avatar must be a valid URL")
+          .max(500, "Avatar URL must not exceed 500 characters"),
+        z.literal(""),
+        z.null(),
+      ])
+      .optional(),
+  })
+  .refine((data) => data.name !== undefined || data.avatar !== undefined, {
+    message: "At least one profile field must be provided",
+  });
+
+export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
+
+// =========================================================
+// Password change
+// =========================================================
+
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z
+      .string({ required_error: "Current password is required" })
+      .min(1, "Current password is required"),
+    newPassword: passwordField,
+    confirmPassword: z
+      .string({ required_error: "Confirm password is required" })
+      .min(1, "Confirm password is required"),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: "New password and confirmation do not match",
+    path: ["confirmPassword"],
+  })
+  .refine((data) => data.currentPassword !== data.newPassword, {
+    message: "New password must be different from the current password",
+    path: ["newPassword"],
+  });
+
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;

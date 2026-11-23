@@ -7,6 +7,20 @@ import { Header } from "./Header";
 
 let isAuthVerifiedMemory = false;
 
+type ThemeMode = "system" | "light" | "dark";
+
+function applyStoredTheme() {
+  if (typeof window === "undefined") return;
+  const stored = window.localStorage.getItem("flowpilot_theme");
+  const mode: ThemeMode = stored === "light" || stored === "dark" || stored === "system" ? stored : "system";
+  const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const isDark = mode === "dark" || (mode === "system" && prefersDark);
+  const root = document.documentElement;
+  root.classList.toggle("dark", isDark);
+  root.dataset.theme = mode;
+  root.style.colorScheme = isDark ? "dark" : "light";
+}
+
 interface DashboardShellProps {
   children: ReactNode;
   contentClassName?: string;
@@ -28,6 +42,17 @@ export function DashboardShell({
     }
     return false;
   });
+
+  useEffect(() => {
+    applyStoredTheme();
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const onChange = () => {
+      const stored = window.localStorage.getItem("flowpilot_theme");
+      if (stored === "system" || !stored) applyStoredTheme();
+    };
+    media.addEventListener?.("change", onChange);
+    return () => media.removeEventListener?.("change", onChange);
+  }, []);
 
   useEffect(() => {
     const token =
