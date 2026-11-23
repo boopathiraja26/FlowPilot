@@ -65,7 +65,7 @@ export default function ExecutionDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [executionId]);
 
-  const logs = execution?.logs ?? [];
+  const logs = useMemo(() => execution?.logs ?? [], [execution?.logs]);
 
   const logStats = useMemo(() => {
     const completed = logs.filter((l) => l.status === "COMPLETED").length;

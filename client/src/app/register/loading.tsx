@@ -1,9 +1,12 @@
 export default function RegisterLoading() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-950">
-      <div className="flex flex-col items-center gap-3">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-teal-500 border-t-transparent" />
-        <span className="text-xs font-mono text-slate-400">Loading FlowPilot...</span>
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+      <div className="flex flex-col items-center gap-3 rounded-2xl border border-slate-200 bg-white px-8 py-7 shadow-sm">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-slate-900" />
+        <div className="text-center">
+          <p className="text-sm font-medium text-slate-900">Loading account setup</p>
+          <p className="text-xs text-slate-500">Preparing your FlowPilot registration flow</p>
+        </div>
       </div>
     </div>
   );
