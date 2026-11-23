@@ -1,5 +1,12 @@
 import type { Metadata } from "next";
+import { Inter } from "next/font/google";
 import "./globals.css";
+
+const inter = Inter({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-inter",
+});
 
 export const metadata: Metadata = {
   title: "FlowPilot — AI-Powered Workflow Automation Platform",
@@ -13,8 +20,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="scroll-smooth">
-      <body className="antialiased bg-[#F8FAF8] text-[#17252F] min-h-screen">
+    <html lang="en" className={`scroll-smooth ${inter.variable}`}>
+      <body className={`${inter.className} min-h-screen bg-slate-50 text-slate-900 antialiased`}>
         {children}
       </body>
     </html>

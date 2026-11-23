@@ -3,21 +3,14 @@
 @tailwind utilities;
 
 :root {
-  --background: #f8faf8;
-  --foreground: #17252f;
+  --background: #f8fafc;
+  --foreground: #0f172a;
   --card-bg: #ffffff;
   --card-border: #e2e8f0;
-  --brand-primary: #0d9488;
-  --brand-primary-hover: #0f766e;
-}
-
-.dark {
-  --background: #020617;
-  --foreground: #f8fafc;
-  --card-bg: #0b101d;
-  --card-border: #1e293b;
-  --brand-primary: #3b82f6;
-  --brand-primary-hover: #2563eb;
+  --brand-primary: #2563eb;
+  --brand-primary-hover: #1d4ed8;
+  --muted: #64748b;
+  --ring: rgba(37, 99, 235, 0.35);
 }
 
 body {
@@ -26,6 +19,19 @@ body {
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+@layer base {
+  h1, h2, h3, h4 {
+    letter-spacing: -0.015em;
+  }
+}
+
+@layer utilities {
+  .focus-ring {
+    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:ring-offset-2 focus-visible:ring-offset-white;
+  }
 }
 
 /* Custom Scrollbar for Light SaaS theme */

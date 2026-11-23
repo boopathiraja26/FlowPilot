@@ -1,15 +1,78 @@
 "use client";
 
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { LogOut, Menu, Sparkles } from "lucide-react";
+import { ChevronDown, LogOut, Menu, PanelLeft, User } from "lucide-react";
 import { api } from "@/lib/api";
 import { useUIStore } from "@/store/useUIStore";
+import { Breadcrumbs } from "./Breadcrumbs";
+
+type StoredUser = {
+  name?: string;
+  email?: string;
+  fullName?: string;
+  username?: string;
+};
+
+function getStoredUser(): StoredUser | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem("flowpilot_user");
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as StoredUser;
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function getDisplayName(user: StoredUser | null): string {
+  if (!user) return "Account";
+  return user.name || user.fullName || user.username || user.email || "Account";
+}
+
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "U";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
 
 export function Header() {
   const router = useRouter();
-  const toggleSidebar = useUIStore((state) => state.toggleSidebar);
+  const { toggleMobileSidebar, toggleSidebarCollapsed } = useUIStore();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [user, setUser] = useState<StoredUser | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    setUser(getStoredUser());
+  }, []);
+
+  useEffect(() => {
+    function onDocumentClick(event: MouseEvent) {
+      if (!menuRef.current) return;
+      if (!menuRef.current.contains(event.target as Node)) {
+        setMenuOpen(false);
+      }
+    }
+    function onEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setMenuOpen(false);
+    }
+    document.addEventListener("mousedown", onDocumentClick);
+    document.addEventListener("keydown", onEscape);
+    return () => {
+      document.removeEventListener("mousedown", onDocumentClick);
+      document.removeEventListener("keydown", onEscape);
+    };
+  }, []);
+
+  const displayName = useMemo(() => getDisplayName(user), [user]);
+  const email = user?.email || "";
+  const initials = useMemo(() => getInitials(displayName), [displayName]);
 
   async function handleLogout() {
+    setMenuOpen(false);
     try {
       await api.post("/auth/logout");
     } catch (error) {
@@ -24,36 +87,94 @@ export function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-slate-200 bg-white/90 px-4 sm:px-6 backdrop-blur-md">
-      <div className="flex items-center gap-4">
-        <button
-          onClick={toggleSidebar}
-          className="rounded-xl p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-          title="Toggle Sidebar"
-          aria-label="Toggle Sidebar"
-        >
-          <Menu className="h-5 w-5" />
-        </button>
+    <header className="sticky top-0 z-20 border-b border-slate-200/80 bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/80">
+      <div className="flex h-16 items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+          <button
+            type="button"
+            onClick={toggleMobileSidebar}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-sm hover:bg-slate-50 hover:text-slate-900 focus-ring lg:hidden"
+            aria-label="Open navigation menu"
+          >
+            <Menu className="h-4.5 w-4.5" />
+          </button>
+          <button
+            type="button"
+            onClick={toggleSidebarCollapsed}
+            className="hidden h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-sm hover:bg-slate-50 hover:text-slate-900 focus-ring lg:inline-flex"
+            aria-label="Toggle sidebar"
+            title="Toggle sidebar"
+          >
+            <PanelLeft className="h-4.5 w-4.5" />
+          </button>
 
-        <div className="flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 border border-emerald-200">
-          <span className="flex h-2 w-2 rounded-full bg-emerald-500" />
-          <span className="text-xs font-semibold text-emerald-700">Production Engine</span>
+          <div className="hidden h-6 w-px bg-slate-200 sm:block" aria-hidden="true" />
+          <div className="min-w-0">
+            <Breadcrumbs />
+          </div>
         </div>
-      </div>
 
-      <div className="flex items-center gap-3">
-        <div className="hidden sm:flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 border border-blue-200">
-          <Sparkles className="h-3.5 w-3.5 text-blue-600" />
-          <span>FlowPilot Pro</span>
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="hidden items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 md:flex">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            <span>System operational</span>
+          </div>
+
+          <div className="relative" ref={menuRef}>
+            <button
+              type="button"
+              onClick={() => setMenuOpen((open) => !open)}
+              className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white py-1.5 pl-1.5 pr-2.5 shadow-sm transition-colors hover:bg-slate-50 focus-ring"
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+            >
+              <span className="flex h-7 w-7 items-center justify-center rounded-md bg-slate-900 text-[11px] font-semibold text-white">
+                {initials}
+              </span>
+              <span className="hidden min-w-0 max-w-[140px] text-left sm:block">
+                <span className="block truncate text-xs font-semibold text-slate-900">{displayName}</span>
+                {email ? <span className="block truncate text-[11px] text-slate-500">{email}</span> : null}
+              </span>
+              <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${menuOpen ? "rotate-180" : ""}`} />
+            </button>
+
+            {menuOpen && (
+              <div
+                role="menu"
+                aria-label="User menu"
+                className="absolute right-0 mt-2 w-60 overflow-hidden rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg ring-1 ring-slate-900/5"
+              >
+                <div className="border-b border-slate-100 px-2.5 py-2">
+                  <p className="truncate text-sm font-semibold text-slate-900">{displayName}</p>
+                  <p className="truncate text-xs text-slate-500">{email || "Signed in"}</p>
+                </div>
+                <div className="p-1">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      router.push("/dashboard/workflows");
+                    }}
+                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-slate-700 hover:bg-slate-50 focus-ring"
+                  >
+                    <User className="h-4 w-4 text-slate-500" />
+                    <span>Workspace</span>
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={handleLogout}
+                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-rose-700 hover:bg-rose-50 focus-ring"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    <span>Sign out</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-
-        <button
-          onClick={handleLogout}
-          className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-600 shadow-sm transition-all duration-150 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 active:scale-[0.98]"
-        >
-          <LogOut className="h-3.5 w-3.5" />
-          <span>Logout</span>
-        </button>
       </div>
     </header>
   );

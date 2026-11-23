@@ -1,13 +1,14 @@
-"use client";
+﻿"use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Activity, CheckCircle2, AlertCircle, Clock, ArrowRight, Filter } from "lucide-react";
+import { Activity, AlertCircle, ArrowRight, CheckCircle2, Clock3, Filter, PlayCircle, XCircle } from "lucide-react";
 
 import { DashboardShell } from "@/components/layout/DashboardShell";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { InlineError } from "@/components/ui/PageState";
+import { Skeleton, TableSkeleton } from "@/components/ui/Skeleton";
 import { api } from "@/lib/api";
 import { WorkflowExecution } from "@/types/execution";
 
@@ -22,223 +23,212 @@ function formatDateTime(isoDate: string): string {
 }
 
 function formatDuration(startedAt: string, completedAt: string | null): string {
-  if (!completedAt) return "--";
-
+  if (!completedAt) return "—";
   const durationMs = new Date(completedAt).getTime() - new Date(startedAt).getTime();
-  if (durationMs < 0) return "--";
-
+  if (durationMs < 0) return "—";
   const totalSeconds = Math.floor(durationMs / 1000);
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
-
   if (minutes === 0) return `${seconds}s`;
   return `${minutes}m ${seconds}s`;
 }
+
+type StatusFilter = "ALL" | "COMPLETED" | "RUNNING" | "FAILED";
 
 export default function ExecutionHistoryPage() {
   const [executions, setExecutions] = useState<WorkflowExecution[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<"ALL" | "COMPLETED" | "RUNNING" | "FAILED">("ALL");
+  const [filter, setFilter] = useState<StatusFilter>("ALL");
+
+  async function fetchExecutions() {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await api.get("/executions");
+      setExecutions((response.data.data.executions as WorkflowExecution[]) ?? []);
+    } catch (err: any) {
+      if (err?.response?.status === 401) return;
+      setError("Unable to load execution history. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
   useEffect(() => {
-    let isCancelled = false;
-
-    async function fetchExecutions() {
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        const response = await api.get("/executions");
-        if (!isCancelled) {
-          setExecutions(response.data.data.executions as WorkflowExecution[]);
-        }
-      } catch (err: any) {
-        if (!isCancelled) {
-          if (err?.response?.status === 401) {
-            return;
-          }
-          setError("Couldn't load execution history. Try again later.");
-        }
-      } finally {
-        if (!isCancelled) {
-          setIsLoading(false);
-        }
-      }
-    }
-
     fetchExecutions();
-
-    return () => {
-      isCancelled = true;
-    };
   }, []);
 
-  const completedCount = executions.filter((e) => e.status === "COMPLETED").length;
-  const failedCount = executions.filter((e) => e.status === "FAILED").length;
-  const runningCount = executions.filter((e) => e.status === "RUNNING").length;
+  const stats = useMemo(() => {
+    const completed = executions.filter((e) => e.status === "COMPLETED").length;
+    const failed = executions.filter((e) => e.status === "FAILED").length;
+    const running = executions.filter((e) => e.status === "RUNNING").length;
+    return { total: executions.length, completed, failed, running };
+  }, [executions]);
 
-  const filteredExecutions = executions.filter((e) => {
-    if (filter === "ALL") return true;
-    return e.status === filter;
-  });
+  const filteredExecutions = useMemo(() => {
+    if (filter === "ALL") return executions;
+    return executions.filter((e) => e.status === filter);
+  }, [executions, filter]);
 
   return (
     <DashboardShell>
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-white/[0.08] pb-5">
-          <div>
-            <div className="flex items-center gap-2.5">
-              <h1 className="text-2xl font-extrabold tracking-tight text-white">Execution Logs</h1>
-              <span className="rounded-full bg-blue-950/60 px-2.5 py-0.5 text-xs font-bold text-blue-400 border border-blue-500/30 shadow-[0_0_12px_-2px_rgba(59,130,246,0.3)]">
-                {executions.length} Total Runs
-              </span>
-            </div>
-            <p className="mt-1 text-sm text-slate-400">
-              Real-time pipeline telemetry, status monitoring, and step-by-step logs.
+        <div className="flex flex-col gap-4 border-b border-slate-200 pb-5 sm:flex-row sm:items-end sm:justify-between">
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-slate-500">Monitoring</p>
+            <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Executions</h1>
+            <p className="text-sm text-slate-600">
+              Review workflow runs, outcomes, and durations across your workspace.
             </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 shadow-sm">
+              {stats.total} total runs
+            </span>
           </div>
         </div>
 
-        {/* Stats Row */}
-        {!isLoading && !error && executions.length > 0 && (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 animate-fade-in">
-            <div className="rounded-2xl border border-white/[0.08] bg-dark-900/90 p-5 shadow-card flex items-center justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Executions</p>
-                <p className="mt-1 text-2xl font-black text-white">{executions.length}</p>
+        {error ? <InlineError title="Couldn’t load executions" message={error} onRetry={fetchExecutions} /> : null}
+
+        {isLoading ? (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <Skeleton className="h-24 rounded-xl" />
+              <Skeleton className="h-24 rounded-xl" />
+              <Skeleton className="h-24 rounded-xl" />
+              <Skeleton className="h-24 rounded-xl" />
+            </div>
+            <TableSkeleton rows={6} />
+          </div>
+        ) : null}
+
+        {!isLoading && !error && executions.length > 0 ? (
+          <>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium text-slate-500">Total runs</p>
+                  <Activity className="h-4 w-4 text-slate-400" />
+                </div>
+                <p className="mt-2 text-2xl font-semibold text-slate-900">{stats.total}</p>
               </div>
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-950/60 text-blue-400 border border-blue-500/30 shadow-[0_0_12px_-2px_rgba(59,130,246,0.3)]">
-                <Activity className="h-5 w-5" />
+              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium text-slate-500">Completed</p>
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                </div>
+                <p className="mt-2 text-2xl font-semibold text-slate-900">{stats.completed}</p>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium text-slate-500">Running</p>
+                  <PlayCircle className="h-4 w-4 text-blue-500" />
+                </div>
+                <p className="mt-2 text-2xl font-semibold text-slate-900">{stats.running}</p>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium text-slate-500">Failed</p>
+                  <XCircle className="h-4 w-4 text-rose-500" />
+                </div>
+                <p className="mt-2 text-2xl font-semibold text-slate-900">{stats.failed}</p>
               </div>
             </div>
 
-            <div className="rounded-2xl border border-white/[0.08] bg-dark-900/90 p-5 shadow-card flex items-center justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Successful Runs</p>
-                <p className="mt-1 text-2xl font-black text-emerald-400">{completedCount}</p>
-              </div>
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-950/60 text-emerald-400 border border-emerald-500/30 shadow-[0_0_12px_-2px_rgba(16,185,129,0.3)]">
-                <CheckCircle2 className="h-5 w-5" />
-              </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 pr-1 text-xs font-medium uppercase tracking-wide text-slate-500">
+                <Filter className="h-3.5 w-3.5" /> Filter
+              </span>
+              {(["ALL", "RUNNING", "COMPLETED", "FAILED"] as const).map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setFilter(tab)}
+                  className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors focus-ring ${
+                    filter === tab
+                      ? "bg-slate-900 text-white"
+                      : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                  }`}
+                >
+                  {tab === "ALL" ? "All" : tab.charAt(0) + tab.slice(1).toLowerCase()}
+                </button>
+              ))}
             </div>
 
-            <div className="rounded-2xl border border-white/[0.08] bg-dark-900/90 p-5 shadow-card flex items-center justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Failed / Errors</p>
-                <p className="mt-1 text-2xl font-black text-rose-400">{failedCount}</p>
-              </div>
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-rose-950/60 text-rose-400 border border-rose-500/30 shadow-[0_0_12px_-2px_rgba(244,63,94,0.3)]">
-                <AlertCircle className="h-5 w-5" />
+            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-left text-sm">
+                  <thead className="bg-slate-50/80 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    <tr>
+                      <th className="px-4 py-3 sm:px-6">Workflow</th>
+                      <th className="px-4 py-3 sm:px-6">Status</th>
+                      <th className="px-4 py-3 sm:px-6">Started</th>
+                      <th className="px-4 py-3 sm:px-6">Completed</th>
+                      <th className="px-4 py-3 sm:px-6">Duration</th>
+                      <th className="px-4 py-3 text-right sm:px-6">Details</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredExecutions.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="px-6 py-10 text-center text-sm text-slate-500">
+                          No executions match the selected filter.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredExecutions.map((execution) => (
+                        <tr key={execution.id} className="transition-colors hover:bg-slate-50/70">
+                          <td className="px-4 py-4 sm:px-6">
+                            <div className="min-w-0">
+                              <p className="truncate font-medium text-slate-900">
+                                {execution.workflow?.title ?? "Untitled workflow"}
+                              </p>
+                              <p className="mt-0.5 truncate font-mono text-xs text-slate-500">
+                                {execution.id}
+                              </p>
+                            </div>
+                          </td>
+                          <td className="px-4 py-4 sm:px-6">
+                            <StatusBadge status={execution.status} />
+                          </td>
+                          <td className="px-4 py-4 text-slate-600 sm:px-6">{formatDateTime(execution.startedAt)}</td>
+                          <td className="px-4 py-4 text-slate-600 sm:px-6">
+                            {execution.completedAt ? formatDateTime(execution.completedAt) : "—"}
+                          </td>
+                          <td className="px-4 py-4 font-medium text-slate-700 sm:px-6">
+                            {formatDuration(execution.startedAt, execution.completedAt)}
+                          </td>
+                          <td className="px-4 py-4 text-right sm:px-6">
+                            <Link
+                              href={`/dashboard/executions/${execution.id}`}
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900 focus-ring"
+                            >
+                              View
+                              <ArrowRight className="h-3.5 w-3.5" />
+                            </Link>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
-          </div>
-        )}
+          </>
+        ) : null}
 
-        {/* Filter Tabs */}
-        {!isLoading && !error && executions.length > 0 && (
-          <div className="flex items-center gap-2 border-b border-white/[0.06] pb-3">
-            <Filter className="h-4 w-4 text-slate-500 mr-1" />
-            {(["ALL", "COMPLETED", "RUNNING", "FAILED"] as const).map((tab) => (
-              <button
-                key={tab}
-                type="button"
-                onClick={() => setFilter(tab)}
-                className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
-                  filter === tab
-                    ? "bg-blue-600/15 text-blue-400 border border-blue-500/30 shadow-[0_0_12px_rgba(59,130,246,0.2)]"
-                    : "text-slate-400 hover:text-slate-200 hover:bg-white/[0.05]"
-                }`}
-              >
-                {tab === "ALL" ? "All Executions" : tab.charAt(0) + tab.slice(1).toLowerCase()}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Loading Table */}
-        {isLoading && (
-          <div className="rounded-2xl border border-white/[0.08] bg-dark-900/90 p-6 space-y-4 shadow-card">
-            <Skeleton className="h-8 w-full" />
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
-          </div>
-        )}
-
-        {/* Error State */}
-        {!isLoading && error && (
-          <div className="flex justify-center py-12">
-            <div className="flex items-center gap-3 rounded-2xl border border-rose-500/30 bg-rose-950/60 p-5 text-rose-300 max-w-md shadow-card">
-              <AlertCircle className="h-6 w-6 shrink-0 text-rose-400" />
-              <p className="text-sm font-semibold">{error}</p>
-            </div>
-          </div>
-        )}
-
-        {/* Empty State */}
-        {!isLoading && !error && executions.length === 0 && (
+        {!isLoading && !error && executions.length === 0 ? (
           <EmptyState
-            title="No execution history found"
-            description="Run a workflow from the builder or trigger an event to see logs here."
-            icon={Clock}
-            actionLabel="View Workflows"
-            onAction={() => window.location.href = "/dashboard/workflows"}
-            className="py-16"
+            icon={Clock3}
+            title="No executions yet"
+            description="When workflows run, their execution history, status, and timing will appear here."
+            actionLabel="Go to workflows"
+            onAction={() => {
+              window.location.href = "/dashboard/workflows";
+            }}
           />
-        )}
-
-        {/* Executions Table */}
-        {!isLoading && !error && executions.length > 0 && (
-          <div className="overflow-x-auto rounded-2xl border border-white/[0.08] bg-dark-900/90 shadow-card animate-fade-in">
-            <table className="w-full min-w-[720px] text-left text-sm">
-              <thead>
-                <tr className="border-b border-white/[0.06] bg-dark-950/80 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  <th className="px-6 py-4">Workflow Name</th>
-                  <th className="px-6 py-4">Status</th>
-                  <th className="px-6 py-4">Started At</th>
-                  <th className="px-6 py-4">Completed At</th>
-                  <th className="px-6 py-4">Duration</th>
-                  <th className="px-6 py-4 text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/[0.04]">
-                {filteredExecutions.map((execution) => (
-                  <tr
-                    key={execution.id}
-                    className="group transition-colors hover:bg-white/[0.03]"
-                  >
-                    <td className="px-6 py-4 font-bold text-slate-100 group-hover:text-blue-400 transition-colors">
-                      {execution.workflow?.title ?? "Untitled workflow"}
-                    </td>
-                    <td className="px-6 py-4">
-                      <StatusBadge status={execution.status} />
-                    </td>
-                    <td className="px-6 py-4 text-xs font-medium text-slate-400 font-mono">
-                      {formatDateTime(execution.startedAt)}
-                    </td>
-                    <td className="px-6 py-4 text-xs font-medium text-slate-400 font-mono">
-                      {execution.completedAt ? formatDateTime(execution.completedAt) : "--"}
-                    </td>
-                    <td className="px-6 py-4 text-xs font-mono font-bold text-blue-400">
-                      {formatDuration(execution.startedAt, execution.completedAt)}
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <Link
-                        href={`/dashboard/executions/${execution.id}`}
-                        className="inline-flex items-center gap-1.5 rounded-xl border border-white/[0.08] bg-dark-850 px-3.5 py-1.5 text-xs font-semibold text-slate-200 transition-all hover:bg-dark-800 hover:border-white/[0.16] hover:text-white"
-                      >
-                        <span>Inspect Log</span>
-                        <ArrowRight className="h-3.5 w-3.5" />
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        ) : null}
       </div>
     </DashboardShell>
   );

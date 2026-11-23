@@ -151,48 +151,47 @@ export default function NewWorkflowPage() {
 
   return (
     <DashboardShell>
-      <div className="space-y-8 max-w-6xl mx-auto pb-12">
+      <div className="space-y-8 pb-4">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-white/[0.08] pb-6">
-          <div className="flex items-center gap-3.5">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-950/60 text-blue-400 border border-blue-500/30 shadow-[0_0_20px_rgba(59,130,246,0.2)]">
-              <Layers className="h-6 w-6" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2.5">
-                <h1 className="text-2xl font-extrabold tracking-tight text-white">
-                  New Workflow
-                </h1>
+        <div className="flex flex-col gap-4 border-b border-slate-200 pb-6 sm:flex-row sm:items-end sm:justify-between">
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-slate-500">Automation</p>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm">
+                <Layers className="h-5 w-5" />
               </div>
-              <p className="mt-1 text-xs sm:text-sm text-slate-400">
-                Create a workflow manually in the visual builder, or generate one with AI when available.
-              </p>
+              <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
+                New workflow
+              </h1>
             </div>
+            <p className="max-w-2xl text-sm text-slate-600">
+              Create a workflow manually in the visual builder, or generate one with AI when available.
+            </p>
           </div>
         </div>
 
         {/* Creation paths */}
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 items-start">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 items-start">
           {/* Manual creation */}
-          <section className="rounded-3xl border border-white/[0.08] bg-dark-900/90 p-6 sm:p-8 shadow-card backdrop-blur-xl">
+          <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <PenSquare className="h-4 w-4 text-blue-400" />
-                  <h2 className="text-sm font-bold text-white">Create Manually</h2>
+                <div className="mb-2 flex items-center gap-2">
+                  <PenSquare className="h-4 w-4 text-slate-700" />
+                  <h2 className="text-base font-semibold text-slate-900">Create manually</h2>
                 </div>
-                <p className="text-xs text-slate-400 leading-relaxed">
+                <p className="text-sm leading-6 text-slate-600">
                   Start with a blank draft workflow and build it in the visual builder. This works without Gemini AI.
                 </p>
               </div>
-              <span className="shrink-0 rounded-full bg-blue-950/60 px-2.5 py-0.5 text-[11px] font-bold text-blue-300 border border-blue-500/30">
-                Recommended when AI is unavailable
+              <span className="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-700">
+                No AI required
               </span>
             </div>
 
             {manualError && (
-              <div className="mt-4 flex items-start gap-2.5 rounded-2xl border border-rose-500/30 bg-rose-950/60 p-3.5 text-xs font-semibold text-rose-300">
-                <AlertCircle className="h-4 w-4 mt-0.5 shrink-0 text-rose-400" />
+              <div className="mt-4 flex items-start gap-2.5 rounded-lg border border-rose-200 bg-rose-50 p-3.5 text-sm font-medium text-rose-800">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" />
                 <p>{manualError}</p>
               </div>
             )}

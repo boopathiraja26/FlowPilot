@@ -1,19 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Clock, Activity, Terminal, AlertCircle, CheckCircle2, ShieldCheck } from "lucide-react";
+import { useParams } from "next/navigation";
 import Link from "next/link";
+import { Activity, ArrowLeft, CheckCircle2, Clock3, Terminal, XCircle } from "lucide-react";
 
 import { DashboardShell } from "@/components/layout/DashboardShell";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { InlineError } from "@/components/ui/PageState";
 import { api } from "@/lib/api";
 import { WorkflowExecution } from "@/types/execution";
 
 function formatDateTime(isoDate: string | null): string {
-  if (!isoDate) return "--";
-
+  if (!isoDate) return "—";
   return new Date(isoDate).toLocaleString(undefined, {
     year: "numeric",
     month: "short",
@@ -25,15 +26,12 @@ function formatDateTime(isoDate: string | null): string {
 }
 
 function formatDuration(startedAt: string, completedAt: string | null): string {
-  if (!completedAt) return "--";
-
+  if (!completedAt) return "—";
   const durationMs = new Date(completedAt).getTime() - new Date(startedAt).getTime();
-  if (durationMs < 0) return "--";
-
+  if (durationMs < 0) return "—";
   const totalSeconds = Math.floor(durationMs / 1000);
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
-
   if (minutes === 0) return `${seconds}s`;
   return `${minutes}m ${seconds}s`;
 }
@@ -41,178 +39,173 @@ function formatDuration(startedAt: string, completedAt: string | null): string {
 export default function ExecutionDetailPage() {
   const params = useParams<{ id: string }>();
   const executionId = params?.id;
-  const router = useRouter();
 
   const [execution, setExecution] = useState<WorkflowExecution | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  async function fetchExecution() {
+    if (!executionId) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await api.get(`/executions/${executionId}`);
+      setExecution(response.data.data.execution as WorkflowExecution);
+    } catch (err: any) {
+      if (err?.response?.status === 401) return;
+      setError("Unable to load execution details. The run may be unavailable or you may not have access.");
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
   useEffect(() => {
     if (!executionId) return;
-
-    let isCancelled = false;
-
-    async function fetchExecution() {
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        const response = await api.get(`/executions/${executionId}`);
-        if (!isCancelled) {
-          setExecution(response.data.data.execution as WorkflowExecution);
-        }
-      } catch (err: any) {
-        if (!isCancelled) {
-          if (err?.response?.status === 401) {
-            return;
-          }
-          setError("Couldn't load execution log details.");
-        }
-      } finally {
-        if (!isCancelled) {
-          setIsLoading(false);
-        }
-      }
-    }
-
     fetchExecution();
-
-    return () => {
-      isCancelled = true;
-    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [executionId]);
 
   const logs = execution?.logs ?? [];
 
   return (
     <DashboardShell>
-      <div className="space-y-6 max-w-5xl mx-auto">
-        {/* Back link */}
-        <Link
-          href="/dashboard/executions"
-          className="inline-flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-white transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          <span>Back to Executions</span>
-        </Link>
+      <div className="space-y-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <Link
+              href="/dashboard/executions"
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 focus-ring rounded-md"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to executions
+            </Link>
+            <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Execution details</h1>
+            <p className="text-sm text-slate-600">Inspect run status, timing, and step-level output.</p>
+          </div>
+        </div>
 
-        {isLoading && (
+        {isLoading ? (
           <div className="space-y-4">
-            <Skeleton className="h-28 w-full" />
-            <Skeleton className="h-32 w-full" />
-            <Skeleton className="h-32 w-full" />
+            <Skeleton className="h-40 w-full rounded-xl" />
+            <Skeleton className="h-24 w-full rounded-xl" />
+            <Skeleton className="h-24 w-full rounded-xl" />
           </div>
-        )}
+        ) : null}
 
-        {!isLoading && error && (
-          <div className="flex justify-center py-12">
-            <div className="flex items-center gap-3 rounded-2xl border border-rose-500/30 bg-rose-950/60 p-5 text-rose-300 max-w-md shadow-card">
-              <AlertCircle className="h-6 w-6 shrink-0 text-rose-400" />
-              <p className="text-sm font-semibold">{error}</p>
-            </div>
-          </div>
-        )}
+        {!isLoading && error ? (
+          <InlineError title="Couldn’t load execution" message={error} onRetry={fetchExecution} />
+        ) : null}
 
-        {!isLoading && !error && execution && (
+        {!isLoading && !error && execution ? (
           <>
-            {/* Execution summary card */}
-            <div className="rounded-3xl border border-white/[0.08] bg-dark-900/90 p-6 sm:p-7 shadow-card backdrop-blur-xl animate-fade-in">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <div className="flex items-center gap-3">
-                    <h1 className="text-xl font-extrabold text-white">
+            <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <h2 className="truncate text-lg font-semibold text-slate-900">
                       {execution.workflow?.title ?? "Untitled workflow"}
-                    </h1>
+                    </h2>
                     <StatusBadge status={execution.status} />
                   </div>
-                  <p className="mt-1 font-mono text-xs text-slate-400">
-                    Execution ID: {execution.id}
-                  </p>
+                  <p className="mt-1 font-mono text-xs text-slate-500 break-all">Execution ID: {execution.id}</p>
+                </div>
+                <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                  {execution.status === "COMPLETED" ? (
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                  ) : execution.status === "FAILED" ? (
+                    <XCircle className="h-4 w-4 text-rose-600" />
+                  ) : (
+                    <Activity className="h-4 w-4 text-blue-600" />
+                  )}
+                  <span className="font-medium">
+                    {execution.status === "COMPLETED"
+                      ? "Run completed"
+                      : execution.status === "FAILED"
+                        ? "Run failed"
+                        : "Run in progress"}
+                  </span>
                 </div>
               </div>
 
-              <div className="mt-6 grid grid-cols-1 gap-4 border-t border-white/[0.06] pt-5 sm:grid-cols-3">
-                <div className="rounded-2xl bg-dark-950 p-4 border border-white/[0.06]">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Started</p>
-                  <p className="mt-1 text-xs font-mono font-semibold text-slate-200">{formatDateTime(execution.startedAt)}</p>
+              <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-4">
+                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Started</p>
+                  <p className="mt-1 text-sm font-medium text-slate-900">{formatDateTime(execution.startedAt)}</p>
                 </div>
-                <div className="rounded-2xl bg-dark-950 p-4 border border-white/[0.06]">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Completed</p>
-                  <p className="mt-1 text-xs font-mono font-semibold text-slate-200">{formatDateTime(execution.completedAt)}</p>
+                <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-4">
+                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Completed</p>
+                  <p className="mt-1 text-sm font-medium text-slate-900">{formatDateTime(execution.completedAt)}</p>
                 </div>
-                <div className="rounded-2xl bg-dark-950 p-4 border border-white/[0.06]">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Execution Duration</p>
-                  <p className="mt-1 text-xs font-mono font-bold text-blue-400">
+                <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-4">
+                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Duration</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-900">
                     {formatDuration(execution.startedAt, execution.completedAt)}
                   </p>
                 </div>
               </div>
-            </div>
+            </section>
 
-            {/* Execution logs timeline */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-base font-extrabold text-white flex items-center gap-2">
-                  <Activity className="h-4.5 w-4.5 text-blue-400" />
-                  <span>Step Execution Timeline</span>
-                </h2>
-                <span className="text-xs font-semibold text-slate-400">
-                  {logs.length} step {logs.length === 1 ? "log" : "logs"}
+            <section className="space-y-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-base font-semibold text-slate-900">Step timeline</h2>
+                  <p className="text-sm text-slate-600">Ordered execution logs for each workflow step.</p>
+                </div>
+                <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700">
+                  {logs.length} {logs.length === 1 ? "log" : "logs"}
                 </span>
               </div>
 
               {logs.length === 0 ? (
-                <div className="flex h-36 items-center justify-center rounded-2xl border border-dashed border-white/[0.12] bg-dark-900/60 text-center">
-                  <p className="text-xs font-medium text-slate-400">No step logs recorded for this run.</p>
-                </div>
+                <EmptyState
+                  icon={Clock3}
+                  title="No step logs recorded"
+                  description="This execution does not have step-level logs yet. If it is still running, details may appear shortly."
+                />
               ) : (
-                <div className="relative space-y-4 before:absolute before:left-6 before:top-4 before:bottom-4 before:w-0.5 before:bg-slate-800 animate-fade-in">
+                <div className="space-y-3">
                   {logs.map((log, index) => (
-                    <div
+                    <article
                       key={log.id || index}
-                      className="relative flex items-start gap-4 pl-12"
+                      className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5"
                     >
-                      {/* Timeline Dot */}
-                      <div className="absolute left-4 top-4 flex h-4 w-4 -translate-x-1/2 items-center justify-center rounded-full bg-dark-950 ring-4 ring-dark-800">
-                        <span className={`h-2.5 w-2.5 rounded-full ${log.status === "COMPLETED" ? "bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.8)]" : log.status === "FAILED" ? "bg-rose-400 shadow-[0_0_8px_rgba(244,63,94,0.8)]" : "bg-blue-400 shadow-[0_0_8px_rgba(59,130,246,0.8)]"}`} />
-                      </div>
-
-                      {/* Log card */}
-                      <div className="flex-1 rounded-2xl border border-white/[0.08] bg-dark-900/90 p-5 shadow-card transition-all duration-200 hover:border-white/[0.16]">
-                        <div className="flex items-start justify-between gap-4">
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="flex h-5 w-5 items-center justify-center rounded-md bg-blue-950/70 text-[10px] font-bold text-blue-400 border border-blue-500/30">
-                                #{index + 1}
-                              </span>
-                              <h3 className="text-sm font-bold text-white">{log.stepName}</h3>
-                            </div>
-                            <span className="mt-1 inline-block text-[10px] font-bold uppercase tracking-wider text-slate-500 font-mono">
-                              Type: {log.stepType}
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-md border border-slate-200 bg-slate-50 px-1.5 text-xs font-semibold text-slate-700">
+                              {index + 1}
+                            </span>
+                            <h3 className="text-sm font-semibold text-slate-900">{log.stepName}</h3>
+                            <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide text-slate-600">
+                              {log.stepType}
                             </span>
                           </div>
-                          <StatusBadge status={log.status} />
+                          <p className="mt-1 text-xs text-slate-500">
+                            {log.startedAt ? `Started ${formatDateTime(log.startedAt)}` : "Start time unavailable"}
+                            {log.completedAt ? ` · Completed ${formatDateTime(log.completedAt)}` : ""}
+                          </p>
                         </div>
-
-                        {log.message && (
-                          <div className="mt-4 rounded-xl bg-dark-950 p-4 border border-white/[0.06] text-slate-100 shadow-inner">
-                            <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
-                              <Terminal className="h-3.5 w-3.5 text-blue-400" />
-                              <span>Step Output Stream</span>
-                            </div>
-                            <pre className="font-mono text-xs whitespace-pre-wrap leading-relaxed text-slate-300 overflow-x-auto">
-                              {log.message}
-                            </pre>
-                          </div>
-                        )}
+                        <StatusBadge status={log.status} />
                       </div>
-                    </div>
+
+                      {log.message ? (
+                        <div className="mt-4 overflow-hidden rounded-lg border border-slate-200 bg-slate-950">
+                          <div className="flex items-center gap-2 border-b border-slate-800 px-3 py-2 text-xs font-medium text-slate-300">
+                            <Terminal className="h-3.5 w-3.5" />
+                            <span>Step output</span>
+                          </div>
+                          <pre className="max-h-80 overflow-auto p-3 text-xs leading-relaxed text-slate-100 whitespace-pre-wrap break-words font-mono">
+                            {log.message}
+                          </pre>
+                        </div>
+                      ) : null}
+                    </article>
                   ))}
                 </div>
               )}
-            </div>
+            </section>
           </>
-        )}
+        ) : null}
       </div>
     </DashboardShell>
   );

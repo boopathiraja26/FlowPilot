@@ -108,26 +108,26 @@ export default function WorkflowsPage() {
   return (
     <DashboardShell>
       <div className="space-y-6">
-        {/* Page Header */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200 pb-5">
-          <div>
-            <div className="flex items-center gap-2.5">
-              <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">Workflows</h1>
-              <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-bold text-blue-700 border border-blue-200">
-                {workflows.length} Total
+        <div className="flex flex-col gap-4 border-b border-slate-200 pb-5 sm:flex-row sm:items-end sm:justify-between">
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-slate-500">Automation</p>
+            <div className="flex flex-wrap items-center gap-2.5">
+              <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Workflows</h1>
+              <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-xs font-medium text-slate-700 shadow-sm">
+                {workflows.length} total
               </span>
             </div>
-            <p className="mt-1 text-sm text-slate-500">
-              Build, automate, and orchestrate intelligent end-to-end pipelines.
+            <p className="text-sm text-slate-600">
+              Design, activate, and manage automated workflows across your workspace.
             </p>
           </div>
 
           <Link
             href="/dashboard/workflows/new"
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-all duration-150 hover:bg-blue-700 active:scale-[0.98]"
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-slate-800 focus-ring"
           >
             <Plus className="h-4 w-4" />
-            <span>Create Workflow</span>
+            <span>Create workflow</span>
           </Link>
         </div>
 

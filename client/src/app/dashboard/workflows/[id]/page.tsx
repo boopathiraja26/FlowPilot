@@ -421,7 +421,7 @@ export default function WorkflowBuilderPage() {
   }
 
   return (
-    <DashboardShell>
+    <DashboardShell contentClassName="mx-auto w-full max-w-none px-4 py-4 sm:px-6 lg:px-8" mainClassName="flex flex-col">
       {/* Initial workflow loading */}
       {isLoading && (
         <div className="flex h-[70vh] items-center justify-center">
