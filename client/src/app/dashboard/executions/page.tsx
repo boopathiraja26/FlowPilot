@@ -1,8 +1,8 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Activity, AlertCircle, ArrowRight, CheckCircle2, Clock3, Filter, PlayCircle, XCircle } from "lucide-react";
+import { Activity, ArrowRight, CheckCircle2, Clock3, ExternalLink, Filter, PlayCircle, Search, X, XCircle } from "lucide-react";
 
 import { DashboardShell } from "@/components/layout/DashboardShell";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -23,7 +23,7 @@ function formatDateTime(isoDate: string): string {
 }
 
 function formatDuration(startedAt: string, completedAt: string | null): string {
-  if (!completedAt) return "—";
+  if (!completedAt) return "In progress";
   const durationMs = new Date(completedAt).getTime() - new Date(startedAt).getTime();
   if (durationMs < 0) return "—";
   const totalSeconds = Math.floor(durationMs / 1000);
@@ -40,6 +40,7 @@ export default function ExecutionHistoryPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<StatusFilter>("ALL");
+  const [search, setSearch] = useState("");
 
   async function fetchExecutions() {
     setIsLoading(true);
@@ -67,9 +68,18 @@ export default function ExecutionHistoryPage() {
   }, [executions]);
 
   const filteredExecutions = useMemo(() => {
-    if (filter === "ALL") return executions;
-    return executions.filter((e) => e.status === filter);
-  }, [executions, filter]);
+    const query = search.trim().toLowerCase();
+    return executions.filter((execution) => {
+      if (filter !== "ALL" && execution.status !== filter) return false;
+      if (!query) return true;
+      const workflowTitle = (execution.workflow?.title ?? "").toLowerCase();
+      const workflowId = (execution.workflowId ?? "").toLowerCase();
+      const executionId = (execution.id ?? "").toLowerCase();
+      return workflowTitle.includes(query) || workflowId.includes(query) || executionId.includes(query);
+    });
+  }, [executions, filter, search]);
+
+  const hasActiveFilters = filter !== "ALL" || search.trim().length > 0;
 
   return (
     <DashboardShell>
@@ -79,17 +89,22 @@ export default function ExecutionHistoryPage() {
             <p className="text-sm font-medium text-slate-500">Monitoring</p>
             <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Executions</h1>
             <p className="text-sm text-slate-600">
-              Review workflow runs, outcomes, and durations across your workspace.
+              Review workflow runs, outcomes, durations, and recent activity across your workspace.
             </p>
           </div>
           <div className="flex items-center gap-2">
             <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 shadow-sm">
               {stats.total} total runs
             </span>
+            {stats.running > 0 ? (
+              <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
+                {stats.running} running
+              </span>
+            ) : null}
           </div>
         </div>
 
-        {error ? <InlineError title="Couldn’t load executions" message={error} onRetry={fetchExecutions} /> : null}
+        {error ? <InlineError title="Couldn't load executions" message={error} onRetry={fetchExecutions} /> : null}
 
         {isLoading ? (
           <div className="space-y-6">
@@ -136,24 +151,51 @@ export default function ExecutionHistoryPage() {
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 pr-1 text-xs font-medium uppercase tracking-wide text-slate-500">
-                <Filter className="h-3.5 w-3.5" /> Filter
-              </span>
-              {(["ALL", "RUNNING", "COMPLETED", "FAILED"] as const).map((tab) => (
-                <button
-                  key={tab}
-                  type="button"
-                  onClick={() => setFilter(tab)}
-                  className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors focus-ring ${
-                    filter === tab
-                      ? "bg-slate-900 text-white"
-                      : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                  }`}
-                >
-                  {tab === "ALL" ? "All" : tab.charAt(0) + tab.slice(1).toLowerCase()}
-                </button>
-              ))}
+            <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
+                <div className="relative min-w-0 flex-1">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search by workflow title or execution ID"
+                    className="w-full rounded-lg border border-slate-300 bg-white py-2 pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus-ring"
+                  />
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 pr-1 text-xs font-medium uppercase tracking-wide text-slate-500">
+                    <Filter className="h-3.5 w-3.5" /> Status
+                  </span>
+                  {(["ALL", "RUNNING", "COMPLETED", "FAILED"] as const).map((tab) => (
+                    <button
+                      key={tab}
+                      type="button"
+                      onClick={() => setFilter(tab)}
+                      className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors focus-ring ${
+                        filter === tab
+                          ? "bg-slate-900 text-white"
+                          : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                      }`}
+                    >
+                      {tab === "ALL" ? "All" : tab.charAt(0) + tab.slice(1).toLowerCase()}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex items-center justify-between gap-3 sm:justify-end">
+                <p className="text-xs font-medium text-slate-500">
+                  Showing {filteredExecutions.length} of {executions.length}
+                </p>
+                {hasActiveFilters ? (
+                  <button
+                    type="button"
+                    onClick={() => { setSearch(""); setFilter("ALL"); }}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 focus-ring"
+                  >
+                    <X className="h-3.5 w-3.5" /> Clear
+                  </button>
+                ) : null}
+              </div>
             </div>
 
             <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -166,14 +208,14 @@ export default function ExecutionHistoryPage() {
                       <th className="px-4 py-3 sm:px-6">Started</th>
                       <th className="px-4 py-3 sm:px-6">Completed</th>
                       <th className="px-4 py-3 sm:px-6">Duration</th>
-                      <th className="px-4 py-3 text-right sm:px-6">Details</th>
+                      <th className="px-4 py-3 text-right sm:px-6">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {filteredExecutions.length === 0 ? (
                       <tr>
                         <td colSpan={6} className="px-6 py-10 text-center text-sm text-slate-500">
-                          No executions match the selected filter.
+                          No executions match the current search or filters.
                         </td>
                       </tr>
                     ) : (
@@ -181,10 +223,15 @@ export default function ExecutionHistoryPage() {
                         <tr key={execution.id} className="transition-colors hover:bg-slate-50/70">
                           <td className="px-4 py-4 sm:px-6">
                             <div className="min-w-0">
-                              <p className="truncate font-medium text-slate-900">
-                                {execution.workflow?.title ?? "Untitled workflow"}
-                              </p>
-                              <p className="mt-0.5 truncate font-mono text-xs text-slate-500">
+                              <Link
+                                href={`/dashboard/workflows/${execution.workflowId}`}
+                                className="group inline-flex max-w-full items-center gap-1.5 truncate font-medium text-slate-900 hover:text-blue-700 focus-ring rounded"
+                                title="Open workflow"
+                              >
+                                <span className="truncate">{execution.workflow?.title ?? "Untitled workflow"}</span>
+                                <ExternalLink className="h-3.5 w-3.5 shrink-0 text-slate-400 group-hover:text-blue-600" />
+                              </Link>
+                              <p className="mt-0.5 truncate font-mono text-xs text-slate-500" title={execution.id}>
                                 {execution.id}
                               </p>
                             </div>
@@ -204,7 +251,7 @@ export default function ExecutionHistoryPage() {
                               href={`/dashboard/executions/${execution.id}`}
                               className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900 focus-ring"
                             >
-                              View
+                              View run
                               <ArrowRight className="h-3.5 w-3.5" />
                             </Link>
                           </td>

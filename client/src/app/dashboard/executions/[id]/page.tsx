@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { Activity, ArrowLeft, CheckCircle2, Clock3, Terminal, XCircle } from "lucide-react";
+import { Activity, ArrowLeft, CheckCircle2, Clock3, ExternalLink, Terminal, XCircle } from "lucide-react";
 
 import { DashboardShell } from "@/components/layout/DashboardShell";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -26,7 +26,7 @@ function formatDateTime(isoDate: string | null): string {
 }
 
 function formatDuration(startedAt: string, completedAt: string | null): string {
-  if (!completedAt) return "—";
+  if (!completedAt) return "In progress";
   const durationMs = new Date(completedAt).getTime() - new Date(startedAt).getTime();
   if (durationMs < 0) return "—";
   const totalSeconds = Math.floor(durationMs / 1000);
@@ -67,6 +67,13 @@ export default function ExecutionDetailPage() {
 
   const logs = execution?.logs ?? [];
 
+  const logStats = useMemo(() => {
+    const completed = logs.filter((l) => l.status === "COMPLETED").length;
+    const failed = logs.filter((l) => l.status === "FAILED").length;
+    const running = logs.filter((l) => l.status === "RUNNING").length;
+    return { completed, failed, running };
+  }, [logs]);
+
   return (
     <DashboardShell>
       <div className="space-y-6">
@@ -82,6 +89,15 @@ export default function ExecutionDetailPage() {
             <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Execution details</h1>
             <p className="text-sm text-slate-600">Inspect run status, timing, and step-level output.</p>
           </div>
+          {execution?.workflowId ? (
+            <Link
+              href={`/dashboard/workflows/${execution.workflowId}`}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900 focus-ring"
+            >
+              Open workflow
+              <ExternalLink className="h-3.5 w-3.5" />
+            </Link>
+          ) : null}
         </div>
 
         {isLoading ? (
@@ -93,7 +109,7 @@ export default function ExecutionDetailPage() {
         ) : null}
 
         {!isLoading && error ? (
-          <InlineError title="Couldn’t load execution" message={error} onRetry={fetchExecution} />
+          <InlineError title="Couldn't load execution" message={error} onRetry={fetchExecution} />
         ) : null}
 
         {!isLoading && !error && execution ? (
@@ -107,7 +123,7 @@ export default function ExecutionDetailPage() {
                     </h2>
                     <StatusBadge status={execution.status} />
                   </div>
-                  <p className="mt-1 font-mono text-xs text-slate-500 break-all">Execution ID: {execution.id}</p>
+                  <p className="mt-1 break-all font-mono text-xs text-slate-500">Execution ID: {execution.id}</p>
                 </div>
                 <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
                   {execution.status === "COMPLETED" ? (
@@ -127,7 +143,7 @@ export default function ExecutionDetailPage() {
                 </div>
               </div>
 
-              <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-4">
                   <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Started</p>
                   <p className="mt-1 text-sm font-medium text-slate-900">{formatDateTime(execution.startedAt)}</p>
@@ -140,6 +156,12 @@ export default function ExecutionDetailPage() {
                   <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Duration</p>
                   <p className="mt-1 text-sm font-semibold text-slate-900">
                     {formatDuration(execution.startedAt, execution.completedAt)}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-4">
+                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Step outcomes</p>
+                  <p className="mt-1 text-sm font-medium text-slate-900">
+                    {logs.length === 0 ? "No logs yet" : `${logStats.completed} completed · ${logStats.failed} failed · ${logStats.running} running`}
                   </p>
                 </div>
               </div>
