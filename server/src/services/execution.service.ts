@@ -113,9 +113,13 @@ async function createExecutionLog(
   status: ExecutionStatus,
   message?: string,
   startedAt: Date = new Date(),
-  completedAt: Date = startedAt
+  completedAt: Date | null = status === ExecutionStatus.RUNNING ? null : startedAt
 ) {
-  return prisma.executionLog.create({
+  const logClient = (prisma as any).executionLog;
+  if (!logClient || typeof logClient.create !== "function") {
+    return { id: undefined, status, message, startedAt, completedAt };
+  }
+  return logClient.create({
     data: {
       executionId,
       stepId: step.id,
@@ -127,6 +131,94 @@ async function createExecutionLog(
       completedAt,
     },
   });
+}
+
+async function updateExecutionLog(
+  logId: string | undefined,
+  status: ExecutionStatus,
+  message: string | undefined,
+  completedAt: Date
+) {
+  const logClient = (prisma as any).executionLog;
+  if (!logId || !logClient || typeof logClient.update !== "function") {
+    return null;
+  }
+  return logClient.update({
+    where: { id: logId },
+    data: {
+      status,
+      message,
+      completedAt,
+    },
+  });
+}
+
+function canPersistRunningStepLogs(): boolean {
+  const logClient = (prisma as any).executionLog;
+  return Boolean(logClient && typeof logClient.create === "function" && typeof logClient.update === "function");
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  let timeoutId: NodeJS.Timeout | null = null;
+  const timeoutPromise = new Promise<T>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new ApiError(504, `${label} timed out after ${Math.ceil(ms / 1000)}s`));
+    }, ms);
+  });
+
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    if (timeoutId) clearTimeout(timeoutId);
+  }) as Promise<T>;
+}
+
+async function assertNoRunningExecution(workflowId: string): Promise<void> {
+  const executionClient = (prisma as any).workflowExecution;
+  if (!executionClient || typeof executionClient.findFirst !== "function") {
+    return;
+  }
+
+  const running = await executionClient.findFirst({
+    where: {
+      workflowId,
+      status: ExecutionStatus.RUNNING,
+    },
+    select: { id: true, startedAt: true },
+    orderBy: { startedAt: "desc" },
+  });
+
+  if (!running) return;
+
+  const ageMs = Date.now() - new Date(running.startedAt).getTime();
+  const staleAfterMs = 15 * 60 * 1000; // longer than max DELAY to avoid interrupting legitimate runs
+  if (ageMs > staleAfterMs) {
+    if (typeof executionClient.update === "function") {
+      await executionClient.update({
+        where: { id: running.id },
+        data: {
+          status: ExecutionStatus.FAILED,
+          completedAt: new Date(),
+        },
+      });
+    }
+    const logClient = (prisma as any).executionLog;
+    if (logClient && typeof logClient.create === "function") {
+      await logClient.create({
+        data: {
+          executionId: running.id,
+          stepId: "system",
+          stepName: "Execution recovery",
+          stepType: WorkflowStepType.TRIGGER,
+          status: ExecutionStatus.FAILED,
+          message: "Execution marked failed after exceeding the safe running window (possible interrupted process).",
+          startedAt: new Date(),
+          completedAt: new Date(),
+        },
+      }).catch(() => undefined);
+    }
+    return;
+  }
+
+  throw new ApiError(409, "Workflow already has a running execution. Wait for it to finish before starting another run.");
 }
 
 // =========================================================
@@ -336,7 +428,7 @@ Instructions:
 ${instructions}
 `;
 
-      const response = await generateAIResponse(prompt);
+      const response = await withTimeout(generateAIResponse(prompt), 60_000, "AI action");
 
       return {
         success: true,
@@ -367,8 +459,9 @@ ${instructions}
       const htmlContent = configuredBody || renderWelcomeEmailHtml(trigger, latestAiOutput);
 
       try {
-        await sendEmail(to, subject, htmlContent);
+        await withTimeout(sendEmail(to, subject, htmlContent), 30_000, "EMAIL action");
       } catch (error) {
+        if (error instanceof ApiError) throw error;
         const message = error instanceof Error && error.message ? error.message : "Email delivery failed";
         throw new ApiError(502, `EMAIL action failed: ${message}`);
       }
@@ -417,12 +510,16 @@ ${instructions}
         body = resolveObjectTemplates(body, context);
       }
 
-      const response = await executeWebhook({
-        url,
-        method,
-        headers,
-        body,
-      });
+      const response = await withTimeout(
+        executeWebhook({
+          url,
+          method,
+          headers,
+          body,
+        }),
+        30_000,
+        "WEBHOOK action"
+      );
 
       return {
         success: true,
@@ -498,6 +595,18 @@ async function executeLoadedWorkflow(
       const stepKey = `step_${i + 1}`;
       const startedAt = new Date();
 
+    const persistRunningLog = canPersistRunningStepLogs();
+    const runningLog = persistRunningLog
+      ? await createExecutionLog(
+          execution.id,
+          step,
+          ExecutionStatus.RUNNING,
+          "Step execution started",
+          startedAt,
+          null
+        )
+      : null;
+
       try {
         const result = await executeSingleStep(step, context, triggerInput);
 
@@ -519,6 +628,24 @@ async function executeLoadedWorkflow(
             ? result.output
             : "Step completed";
 
+      if (persistRunningLog && runningLog?.id) {
+        const updated = await updateExecutionLog(
+          runningLog.id,
+          ExecutionStatus.COMPLETED,
+          completedMessage,
+          completedAt
+        );
+        if (!updated) {
+          await createExecutionLog(
+            execution.id,
+            step,
+            ExecutionStatus.COMPLETED,
+            completedMessage,
+            startedAt,
+            completedAt
+          );
+        }
+      } else {
         await createExecutionLog(
           execution.id,
           step,
@@ -527,16 +654,38 @@ async function executeLoadedWorkflow(
           startedAt,
           completedAt
         );
+      }
       } catch (err) {
         const completedAt = new Date();
+      const failureMessage = toErrorMessage(err);
+
+      if (persistRunningLog && runningLog?.id) {
+        const updated = await updateExecutionLog(
+          runningLog.id,
+          ExecutionStatus.FAILED,
+          failureMessage,
+          completedAt
+        ).catch(() => null);
+        if (!updated) {
+          await createExecutionLog(
+            execution.id,
+            step,
+            ExecutionStatus.FAILED,
+            failureMessage,
+            startedAt,
+            completedAt
+          );
+        }
+      } else {
         await createExecutionLog(
           execution.id,
           step,
           ExecutionStatus.FAILED,
-          toErrorMessage(err),
+          failureMessage,
           startedAt,
           completedAt
         );
+      }
 
         throw err;
       }
@@ -572,7 +721,7 @@ async function executeLoadedWorkflow(
         status: ExecutionStatus.FAILED,
         completedAt: new Date(),
       },
-    });
+    }).catch(() => undefined);
 
     throw error;
   }
@@ -588,6 +737,7 @@ export async function executeWorkflow(
   triggerInput?: Record<string, unknown>
 ) {
   const workflow = await getWorkflowForExecution(workflowId, userId);
+  await assertNoRunningExecution(workflow.id);
   return executeLoadedWorkflow(workflow, triggerInput);
 }
 
@@ -601,6 +751,7 @@ export async function executeWorkflowFromWebhook(
   triggerInput?: Record<string, unknown>
 ) {
   const workflow = await getWorkflowForIncomingWebhook(workflowId, providedSecret);
+  await assertNoRunningExecution(workflow.id);
   const payload = {
     ...(triggerInput ?? {}),
     _triggerSource: "webhook",
