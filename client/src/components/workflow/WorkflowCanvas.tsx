@@ -75,6 +75,7 @@ interface WorkflowCanvasProps {
   executingStepId?: string | null;
 
   onAutoLayoutRef?: (autoLayoutFn: () => void) => void;
+  onFitViewRef?: (fitViewFn: () => void) => void;
 }
 
 // =========================================================
@@ -90,6 +91,7 @@ function WorkflowCanvasInner({
   onEdgesChange,
   executingStepId,
   onAutoLayoutRef,
+  onFitViewRef,
 }: WorkflowCanvasProps) {
   const { fitView } = useReactFlow();
 
@@ -139,12 +141,22 @@ function WorkflowCanvasInner({
     }, 50);
   }, [workflow, fitView, setNodes, setEdges]);
 
-  // Expose autoLayout function to parent toolbar if requested
+  const handleFitView = useCallback(() => {
+    fitView({ padding: 0.25, duration: 300 });
+  }, [fitView]);
+
+  // Expose autoLayout and fitView functions to parent toolbar if requested
   useEffect(() => {
     if (onAutoLayoutRef) {
       onAutoLayoutRef(handleAutoLayout);
     }
   }, [handleAutoLayout, onAutoLayoutRef]);
+
+  useEffect(() => {
+    if (onFitViewRef) {
+      onFitViewRef(handleFitView);
+    }
+  }, [handleFitView, onFitViewRef]);
 
   // =========================================================
   // Sync workflow data updates while strictly preserving positions
