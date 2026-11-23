@@ -1,8 +1,9 @@
 import { Router } from "express";
 
 import {
+  dashboard,
   execute,
- findAll,
+  findAll,
   findOne,
 } from "../controllers/execution.controller";
 
@@ -12,6 +13,8 @@ const router = Router();
 
 // All execution routes require authentication
 router.use(requireAuth);
+
+router.get("/dashboard", dashboard);
 
 // Execute a workflow
 router.post("/:workflowId", execute);

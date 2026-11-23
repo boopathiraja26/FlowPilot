@@ -5,6 +5,7 @@ import { ApiError } from "../middleware/errorHandler";
 import {
   executeWorkflow,
   getExecution,
+  getExecutionDashboardSummary,
   getExecutions,
 } from "../services/execution.service";
 
@@ -76,5 +77,20 @@ export const findOne = asyncHandler(async (req: Request, res: Response) => {
     data: {
       execution,
     },
+  });
+});
+
+// =========================================================
+// GET /api/executions/dashboard
+// =========================================================
+
+export const dashboard = asyncHandler(async (req: Request, res: Response) => {
+  const userId = getUserId(req);
+
+  const summary = await getExecutionDashboardSummary(userId);
+
+  res.status(200).json({
+    success: true,
+    data: summary,
   });
 });

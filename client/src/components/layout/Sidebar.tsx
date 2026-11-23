@@ -2,17 +2,21 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity, GitFork, PanelLeftClose, PanelLeftOpen, Plus, X } from "lucide-react";
+import { Activity, GitFork, LayoutDashboard, PanelLeftClose, PanelLeftOpen, Plus, X } from "lucide-react";
 import { FlowPilotWordmark } from "@/components/landing/FlowPilotWordmark";
 import { useUIStore } from "@/store/useUIStore";
 
 const primaryNav = [
+  { label: "Overview", href: "/dashboard", icon: LayoutDashboard },
   { label: "Workflows", href: "/dashboard/workflows", icon: GitFork },
   { label: "Executions", href: "/dashboard/executions", icon: Activity },
 ];
 
 function isNavActive(pathname: string | null, href: string): boolean {
   if (!pathname) return false;
+  if (href === "/dashboard") {
+    return pathname === href;
+  }
   if (href === "/dashboard/workflows") {
     return pathname === href || (pathname.startsWith("/dashboard/workflows/") && !pathname.endsWith("/new"));
   }
@@ -31,7 +35,7 @@ export function Sidebar() {
   const navContent = (collapsed: boolean, mobile: boolean) => (
     <div className="flex h-full flex-col">
       <div className={`flex h-16 items-center border-b border-slate-200/80 ${collapsed && !mobile ? "justify-center px-2" : "justify-between px-4"}`}>
-        <Link href="/dashboard/workflows" className="flex min-w-0 items-center gap-2" onClick={closeMobileSidebar}>
+        <Link href="/dashboard" className="flex min-w-0 items-center gap-2" onClick={closeMobileSidebar}>
           {collapsed && !mobile ? (
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-900 text-xs font-semibold text-white">
               FP

@@ -309,7 +309,7 @@ ${instructions}
 
       const companyName = trigger.company_name || "FlowPilot";
       const employeeName = trigger.employee_name || "Team Member";
-      const subject = `Welcome to ${companyName}, ${employeeName}! 🚀`;
+      const subject = `Welcome to ${companyName}, ${employeeName}! ðŸš€`;
 
       const htmlContent = renderWelcomeEmailHtml(
         trigger,
@@ -592,4 +592,99 @@ export async function getExecutions(
       startedAt: "desc",
     },
   });
+}
+
+// =========================================================
+// Dashboard summary (authenticated user, real aggregated data)
+// =========================================================
+
+export async function getExecutionDashboardSummary(userId: string) {
+  const now = new Date();
+  const trendDays = 7;
+  const trendStart = new Date(now);
+  trendStart.setUTCHours(0, 0, 0, 0);
+  trendStart.setUTCDate(trendStart.getUTCDate() - (trendDays - 1));
+
+  const [
+    workflowTotal,
+    workflowActive,
+    workflowDraft,
+    workflowArchived,
+    executionTotal,
+    executionCompleted,
+    executionFailed,
+    executionRunning,
+    recentExecutions,
+    trendExecutions,
+  ] = await Promise.all([
+    prisma.workflow.count({ where: { userId } }),
+    prisma.workflow.count({ where: { userId, status: "ACTIVE" } }),
+    prisma.workflow.count({ where: { userId, status: "DRAFT" } }),
+    prisma.workflow.count({ where: { userId, status: "ARCHIVED" } }),
+    prisma.workflowExecution.count({ where: { workflow: { userId } } }),
+    prisma.workflowExecution.count({ where: { workflow: { userId }, status: ExecutionStatus.COMPLETED } }),
+    prisma.workflowExecution.count({ where: { workflow: { userId }, status: ExecutionStatus.FAILED } }),
+    prisma.workflowExecution.count({ where: { workflow: { userId }, status: ExecutionStatus.RUNNING } }),
+    prisma.workflowExecution.findMany({
+      where: { workflow: { userId } },
+      include: {
+        workflow: {
+          select: { id: true, title: true, status: true },
+        },
+      },
+      orderBy: { startedAt: "desc" },
+      take: 8,
+    }),
+    prisma.workflowExecution.findMany({
+      where: {
+        workflow: { userId },
+        startedAt: { gte: trendStart },
+      },
+      select: {
+        startedAt: true,
+        status: true,
+      },
+    }),
+  ]);
+
+  const successRate = executionTotal > 0
+    ? Math.round((executionCompleted / executionTotal) * 100)
+    : 0;
+
+  const trendMap = new Map<string, { date: string; total: number; completed: number; failed: number; running: number }>();
+  for (let i = 0; i < trendDays; i++) {
+    const d = new Date(trendStart);
+    d.setUTCDate(trendStart.getUTCDate() + i);
+    const key = d.toISOString().slice(0, 10);
+    trendMap.set(key, { date: key, total: 0, completed: 0, failed: 0, running: 0 });
+  }
+
+  for (const exec of trendExecutions) {
+    const key = exec.startedAt.toISOString().slice(0, 10);
+    const bucket = trendMap.get(key);
+    if (!bucket) continue;
+    bucket.total += 1;
+    if (exec.status === ExecutionStatus.COMPLETED) bucket.completed += 1;
+    else if (exec.status === ExecutionStatus.FAILED) bucket.failed += 1;
+    else if (exec.status === ExecutionStatus.RUNNING) bucket.running += 1;
+  }
+
+  return {
+    workflows: {
+      total: workflowTotal,
+      active: workflowActive,
+      draft: workflowDraft,
+      archived: workflowArchived,
+    },
+    executions: {
+      total: executionTotal,
+      completed: executionCompleted,
+      failed: executionFailed,
+      running: executionRunning,
+      successRate,
+    },
+    recentExecutions,
+    trend: Array.from(trendMap.values()),
+    generatedAt: now.toISOString(),
+  };
 }
