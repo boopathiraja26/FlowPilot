@@ -27,7 +27,8 @@ export const generateWorkflowSchema = z.object({
 export type GenerateWorkflowInput = z.infer<typeof generateWorkflowSchema>;
 
 // =========================================================
-// AI-generated workflow shape (validated after Gemini responds)
+// AI-generated workflow shape (validated after Gemini responds
+// and for saving edited AI previews without regeneration)
 // =========================================================
 
 export const generatedWorkflowStepSchema = z.object({
@@ -64,3 +65,31 @@ export const generatedWorkflowSchema = z.object({
 });
 
 export type GeneratedWorkflow = z.infer<typeof generatedWorkflowSchema>;
+
+// =========================================================
+// Request: POST /api/ai/generate-and-save
+// Accepts either a prompt (generate + save) or a validated
+// workflow payload (save edited preview without regeneration).
+// =========================================================
+
+export const generateAndSaveWorkflowSchema = z
+  .object({
+    prompt: z
+      .string()
+      .trim()
+      .min(5, "Prompt must be at least 5 characters long")
+      .max(1000, "Prompt must not exceed 1000 characters")
+      .optional(),
+    workflow: generatedWorkflowSchema.optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (!data.prompt && !data.workflow) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Either prompt or workflow is required",
+        path: ["prompt"],
+      });
+    }
+  });
+
+export type GenerateAndSaveWorkflowInput = z.infer<typeof generateAndSaveWorkflowSchema>;

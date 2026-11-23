@@ -1,70 +1,84 @@
-"use client";
+﻿"use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Sparkles,
-  Bot,
   AlertCircle,
-  Zap,
-  Layers,
-  ArrowRight,
+  Bot,
   Clock,
-  Mail,
   Globe,
+  Layers,
+  Loader2,
+  Mail,
   PenSquare,
+  Sparkles,
   Wand2,
+  Zap,
 } from "lucide-react";
 
 import { DashboardShell } from "@/components/layout/DashboardShell";
 import { PromptForm } from "@/components/workflow/PromptForm";
 import { WorkflowPreview } from "@/components/workflow/WorkflowPreview";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { InlineError } from "@/components/ui/PageState";
 import { api } from "@/lib/api";
 import { GeneratedWorkflow } from "@/types/ai";
 import { Workflow } from "@/types/workflow";
 
+const BUILDING_BLOCKS = [
+  { type: "TRIGGER", name: "Trigger", desc: "Manual or webhook entry point that starts execution.", icon: Zap },
+  { type: "AI", name: "Gemini AI", desc: "Generate summaries, messages, and structured content.", icon: Sparkles },
+  { type: "EMAIL", name: "Email", desc: "Send transactional or workflow emails via SMTP.", icon: Mail },
+  { type: "DELAY", name: "Delay", desc: "Pause execution for a configured duration.", icon: Clock },
+  { type: "WEBHOOK", name: "Webhook action", desc: "Send HTTP requests to external systems.", icon: Globe },
+] as const;
+
+function getApiErrorMessage(err: unknown, fallback: string): string {
+  const responseMessage =
+    typeof err === "object" &&
+    err !== null &&
+    "response" in err &&
+    typeof (err as { response?: { data?: { message?: unknown } } }).response?.data?.message === "string"
+      ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
+      : null;
+  if (responseMessage && responseMessage.trim()) return responseMessage;
+
+  if (typeof err === "object" && err !== null && "code" in err) {
+    const code = (err as { code?: string }).code;
+    if (code === "ECONNABORTED") {
+      return "AI workflow generation timed out before it could complete. Please try again, or create the workflow manually.";
+    }
+  }
+  if (err instanceof Error && err.message.trim()) return err.message;
+  return fallback;
+}
+
 export default function NewWorkflowPage() {
   const router = useRouter();
 
-  // AI generation path (preserved)
-  const [prompt, setPrompt] = useState<string>("");
-  const [workflow, setWorkflow] = useState<GeneratedWorkflow | null>(null);
+  // AI generation path
+  const [generatedWorkflow, setGeneratedWorkflow] = useState<GeneratedWorkflow | null>(null);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
-  const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [isSavingGenerated, setIsSavingGenerated] = useState<boolean>(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [lastPrompt, setLastPrompt] = useState<string>("");
 
-  // Manual creation path (works without Gemini / uses existing workflow CRUD)
+  // Manual creation path
   const [manualTitle, setManualTitle] = useState<string>("");
   const [manualDescription, setManualDescription] = useState<string>("");
   const [isCreatingManual, setIsCreatingManual] = useState<boolean>(false);
   const [manualError, setManualError] = useState<string | null>(null);
 
-  function getAiErrorMessage(err: unknown, fallback: string): string {
-    const responseMessage =
-      typeof err === "object" &&
-      err !== null &&
-      "response" in err &&
-      typeof (err as { response?: { data?: { message?: unknown } } }).response
-        ?.data?.message === "string"
-        ? (err as { response?: { data?: { message?: string } } }).response?.data
-            ?.message
-        : null;
-    if (responseMessage && responseMessage.trim()) return responseMessage;
-
-    if (typeof err === "object" && err !== null && "code" in err) {
-      const code = (err as { code?: string }).code;
-      if (code === "ECONNABORTED") {
-        return "AI workflow generation timed out before it could complete. Please try again.";
-      }
-    }
-    return fallback;
-  }
+  const aiConfiguredHint = useMemo(
+    () => "AI generation uses your server's configured Gemini integration. If generation is unavailable, manual workflow creation remains fully supported.",
+    []
+  );
 
   async function handleGenerate(submittedPrompt: string) {
-    setPrompt(submittedPrompt);
+    setLastPrompt(submittedPrompt);
     setIsGenerating(true);
     setAiError(null);
-    setWorkflow(null);
+    setGeneratedWorkflow(null);
 
     try {
       const response = await api.post(
@@ -72,12 +86,16 @@ export default function NewWorkflowPage() {
         { prompt: submittedPrompt },
         { timeout: 35_000 }
       );
-      setWorkflow(response.data.data.workflow as GeneratedWorkflow);
+      const workflow = response.data?.data?.workflow as GeneratedWorkflow | undefined;
+      if (!workflow || !Array.isArray(workflow.steps)) {
+        throw new Error("The AI response did not include a valid workflow draft.");
+      }
+      setGeneratedWorkflow(workflow);
     } catch (err) {
       setAiError(
-        getAiErrorMessage(
+        getApiErrorMessage(
           err,
-          "Couldn't generate a workflow from that prompt. Please try again."
+          "Couldn't generate a workflow from that prompt. You can adjust the prompt and try again, or create a workflow manually."
         )
       );
     } finally {
@@ -85,27 +103,36 @@ export default function NewWorkflowPage() {
     }
   }
 
-  async function handleSave() {
-    if (!prompt) {
+  async function handleSaveGenerated() {
+    if (!generatedWorkflow) return;
+
+    const title = generatedWorkflow.title?.trim() ?? "";
+    if (title.length < 3) {
+      setAiError("Workflow title must be at least 3 characters before saving.");
+      return;
+    }
+    if (!generatedWorkflow.steps || generatedWorkflow.steps.length === 0) {
+      setAiError("Add at least one step before saving the generated workflow.");
       return;
     }
 
-    setIsSaving(true);
+    setIsSavingGenerated(true);
     setAiError(null);
 
     try {
       const response = await api.post(
         "/ai/generate-and-save",
-        { prompt },
+        { workflow: generatedWorkflow },
         { timeout: 35_000 }
       );
-      const savedWorkflow = response.data.data.workflow as Workflow;
+      const savedWorkflow = response.data?.data?.workflow as Workflow | undefined;
+      if (!savedWorkflow?.id) {
+        throw new Error("Workflow was saved but the response was incomplete.");
+      }
       router.push(`/dashboard/workflows/${savedWorkflow.id}`);
     } catch (err) {
-      setAiError(
-        getAiErrorMessage(err, "Couldn't save this workflow. Please try again.")
-      );
-      setIsSaving(false);
+      setAiError(getApiErrorMessage(err, "Couldn't save this workflow draft. Please review the steps and try again."));
+      setIsSavingGenerated(false);
     }
   }
 
@@ -120,6 +147,10 @@ export default function NewWorkflowPage() {
       setManualError("Workflow name must be at least 3 characters long.");
       return;
     }
+    if (title.length > 100) {
+      setManualError("Workflow name must not exceed 100 characters.");
+      return;
+    }
 
     setIsCreatingManual(true);
     try {
@@ -128,52 +159,41 @@ export default function NewWorkflowPage() {
         description: description.length > 0 ? description : null,
         status: "DRAFT",
       });
-      const createdWorkflow = response.data.data.workflow as Workflow;
+      const createdWorkflow = response.data?.data?.workflow as Workflow | undefined;
+      if (!createdWorkflow?.id) {
+        throw new Error("Workflow was created but the response was incomplete.");
+      }
       router.push(`/dashboard/workflows/${createdWorkflow.id}`);
     } catch (err) {
-      const responseMessage =
-        typeof err === "object" &&
-        err !== null &&
-        "response" in err &&
-        typeof (err as { response?: { data?: { message?: unknown } } }).response
-          ?.data?.message === "string"
-          ? (err as { response?: { data?: { message?: string } } }).response?.data
-              ?.message
-          : null;
-      setManualError(
-        responseMessage && responseMessage.trim()
-          ? responseMessage
-          : "Couldn't create the workflow. Please try again."
-      );
+      setManualError(getApiErrorMessage(err, "Couldn't create the workflow. Please try again."));
       setIsCreatingManual(false);
     }
   }
 
   return (
     <DashboardShell>
-      <div className="space-y-8 pb-4">
+      <div className="space-y-8 pb-6">
         {/* Header */}
         <div className="flex flex-col gap-4 border-b border-slate-200 pb-6 sm:flex-row sm:items-end sm:justify-between">
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             <p className="text-sm font-medium text-slate-500">Automation</p>
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm">
                 <Layers className="h-5 w-5" />
               </div>
-              <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
-                New workflow
-              </h1>
+              <div>
+                <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Create workflow</h1>
+                <p className="mt-0.5 text-sm text-slate-600">
+                  Start from a blank draft or generate an editable workflow with AI.
+                </p>
+              </div>
             </div>
-            <p className="max-w-2xl text-sm text-slate-600">
-              Create a workflow manually in the visual builder, or generate one with AI when available.
-            </p>
           </div>
         </div>
 
-        {/* Creation paths */}
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 items-start">
+        <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-2">
           {/* Manual creation */}
-          <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="mb-2 flex items-center gap-2">
@@ -181,28 +201,25 @@ export default function NewWorkflowPage() {
                   <h2 className="text-base font-semibold text-slate-900">Create manually</h2>
                 </div>
                 <p className="text-sm leading-6 text-slate-600">
-                  Start with a blank draft workflow and build it in the visual builder. This works without Gemini AI.
+                  Create a draft workflow and design steps in the visual builder. This path works independently of AI
+                  generation.
                 </p>
               </div>
               <span className="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-700">
-                No AI required
+                Reliable fallback
               </span>
             </div>
 
-            {manualError && (
-              <div className="mt-4 flex items-start gap-2.5 rounded-lg border border-rose-200 bg-rose-50 p-3.5 text-sm font-medium text-rose-800">
-                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" />
-                <p>{manualError}</p>
+            {manualError ? (
+              <div className="mt-4">
+                <InlineError title="Couldn't create workflow" message={manualError} />
               </div>
-            )}
+            ) : null}
 
             <form onSubmit={handleManualCreate} className="mt-5 space-y-4">
               <div>
-                <label
-                  htmlFor="manual-title"
-                  className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5"
-                >
-                  Workflow name <span className="text-rose-400">*</span>
+                <label htmlFor="manual-title" className="mb-1.5 block text-sm font-medium text-slate-900">
+                  Workflow name <span className="text-rose-600">*</span>
                 </label>
                 <input
                   id="manual-title"
@@ -214,20 +231,15 @@ export default function NewWorkflowPage() {
                   }}
                   disabled={isCreatingManual}
                   maxLength={100}
-                  placeholder="e.g. Employee onboarding pipeline"
-                  className="w-full rounded-2xl border border-white/[0.08] bg-dark-950/90 px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500 outline-none transition-all hover:border-white/[0.15] focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 disabled:cursor-not-allowed disabled:opacity-60"
+                  placeholder="e.g. Employee onboarding"
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm focus-ring disabled:cursor-not-allowed disabled:bg-slate-50"
                 />
-                <p className="mt-1.5 text-[11px] text-slate-500">
-                  3–100 characters. You can change this later in the builder.
-                </p>
+                <p className="mt-1.5 text-xs text-slate-500">3–100 characters. You can edit details later in the builder.</p>
               </div>
 
               <div>
-                <label
-                  htmlFor="manual-description"
-                  className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5"
-                >
-                  Description <span className="text-slate-500 font-medium normal-case tracking-normal">(optional)</span>
+                <label htmlFor="manual-description" className="mb-1.5 block text-sm font-medium text-slate-900">
+                  Description <span className="font-normal text-slate-500">(optional)</span>
                 </label>
                 <textarea
                   id="manual-description"
@@ -239,180 +251,130 @@ export default function NewWorkflowPage() {
                   disabled={isCreatingManual}
                   maxLength={500}
                   rows={4}
-                  placeholder="Briefly describe what this workflow will do."
-                  className="w-full resize-none rounded-2xl border border-white/[0.08] bg-dark-950/90 px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500 outline-none transition-all hover:border-white/[0.15] focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 disabled:cursor-not-allowed disabled:opacity-60"
+                  placeholder="Briefly describe what this workflow will automate."
+                  className="w-full resize-y rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm focus-ring disabled:cursor-not-allowed disabled:bg-slate-50"
                 />
-                <p className="mt-1.5 text-[11px] text-slate-500">
-                  Up to 500 characters.
-                </p>
+                <p className="mt-1.5 text-xs text-slate-500">Up to 500 characters.</p>
               </div>
 
               <button
                 type="submit"
                 disabled={isCreatingManual}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-600 px-5 py-3 text-sm font-bold text-white shadow-[0_0_25px_-4px_rgba(59,130,246,0.35)] transition-all duration-150 hover:from-blue-500 hover:to-indigo-500 hover:shadow-[0_0_35px_-4px_rgba(59,130,246,0.45)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 border border-blue-400/20"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50 focus-ring"
               >
                 {isCreatingManual ? (
                   <>
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-                    <span>Creating draft workflow...</span>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Creating draft…</span>
                   </>
                 ) : (
                   <>
                     <PenSquare className="h-4 w-4" />
-                    <span>Create Draft Workflow</span>
-                    <ArrowRight className="h-4 w-4" />
+                    <span>Create draft workflow</span>
                   </>
                 )}
               </button>
-              <p className="text-[11px] text-slate-500 leading-relaxed">
-                Creates a <span className="font-semibold text-slate-300">DRAFT</span> workflow using the existing workflow API and opens the visual builder so you can add steps.
-              </p>
             </form>
           </section>
 
           {/* AI generation */}
-          <section className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Wand2 className="h-4 w-4 text-purple-400" />
-                <span className="text-xs font-bold uppercase tracking-wider text-purple-400">
-                  Generate with AI
-                </span>
+          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="mb-2 flex items-center gap-2">
+                  <Wand2 className="h-4 w-4 text-slate-700" />
+                  <h2 className="text-base font-semibold text-slate-900">Generate with AI</h2>
+                </div>
+                <p className="text-sm leading-6 text-slate-600">
+                  Generate a draft from a prompt, review and edit the result, then save it as a real workflow.
+                </p>
               </div>
-              <span className="rounded-full bg-purple-950/60 px-2.5 py-0.5 text-[11px] font-bold text-purple-400 border border-purple-500/30 shadow-[0_0_12px_-2px_rgba(168,85,247,0.3)]">
-                Gemini 2.5 Flash
+              <span className="shrink-0 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-medium text-blue-700">
+                AI-assisted
               </span>
             </div>
-            <p className="text-xs text-slate-400 leading-relaxed -mt-1">
-              Describe your automation in plain language and preview generated steps before saving. If Gemini is unavailable, you can still create a workflow manually.
-            </p>
 
-            {aiError && (
-              <div className="flex items-start gap-3 rounded-2xl border border-rose-500/30 bg-rose-950/60 p-4 text-xs font-semibold text-rose-300 animate-fade-in shadow-card">
-                <AlertCircle className="h-5 w-5 shrink-0 text-rose-400 mt-0.5" />
-                <p>{aiError}</p>
+            <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3.5 text-xs leading-relaxed text-slate-600">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
+                <p>{aiConfiguredHint}</p>
               </div>
-            )}
+            </div>
 
-            <PromptForm onGenerate={handleGenerate} isLoading={isGenerating} />
+            {aiError ? (
+              <div className="mt-4 space-y-2">
+                <InlineError title="AI generation or save failed" message={aiError} />
+                {lastPrompt ? (
+                  <p className="text-xs text-slate-500">You can adjust the prompt and generate again, or use manual creation.</p>
+                ) : null}
+              </div>
+            ) : null}
+
+            <div className="mt-5">
+              <PromptForm onGenerate={handleGenerate} isLoading={isGenerating} disabled={isSavingGenerated} />
+            </div>
           </section>
         </div>
 
-        {/* AI preview / synthesis result */}
-        <section>
-          <div className="mb-3 flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-blue-400">
-              AI Synthesis Preview
-            </span>
-            {workflow && (
-              <span className="text-[11px] font-semibold text-slate-400">
-                Review generated steps, then save to open in the builder
-              </span>
-            )}
+        {/* AI preview / result */}
+        <section className="space-y-3">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className="text-base font-semibold text-slate-900">Generated workflow preview</h2>
+              <p className="text-sm text-slate-600">Review and edit the AI-generated draft before saving it to your workspace.</p>
+            </div>
+            {generatedWorkflow ? (
+              <span className="text-xs font-medium text-slate-500">Edits made here are saved to the created workflow draft.</span>
+            ) : null}
           </div>
-          {workflow ? (
-            <div className="max-w-3xl">
+
+          {generatedWorkflow ? (
+            <div className="max-w-5xl">
               <WorkflowPreview
-                workflow={workflow}
-                onSave={handleSave}
-                isSaving={isSaving}
+                workflow={generatedWorkflow}
+                onChange={setGeneratedWorkflow}
+                onSave={handleSaveGenerated}
+                isSaving={isSavingGenerated}
               />
             </div>
           ) : (
-            <div className="flex min-h-[220px] flex-col items-center justify-center rounded-3xl border border-dashed border-white/[0.12] bg-dark-900/60 p-8 text-center backdrop-blur-xl">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-purple-950/60 text-purple-400 mb-4 border border-purple-500/30 shadow-[0_0_20px_rgba(168,85,247,0.25)]">
-                <Bot className="h-7 w-7" />
-              </div>
-              <h3 className="text-sm font-bold text-slate-200">
-                No AI workflow generated yet
-              </h3>
-              <p className="mt-1.5 max-w-md text-xs text-slate-400 leading-relaxed">
-                Use &quot;Generate with AI&quot; to synthesize steps from a prompt, or create a draft manually and design it yourself in the builder.
-              </p>
-            </div>
+            <EmptyState
+              icon={Bot}
+              title={isGenerating ? "Generating workflow draft…" : "No AI draft yet"}
+              description={
+                isGenerating
+                  ? "FlowPilot is generating a workflow draft from your prompt. This may take a moment."
+                  : "Describe an automation above to generate an editable draft, or create a workflow manually and build it step by step."
+              }
+            />
           )}
         </section>
 
-        {/* Supported Node Building Blocks Reference */}
-        <div className="border-t border-white/[0.08] pt-8">
-          <div className="mb-6">
-            <span className="text-xs font-bold uppercase tracking-wider text-blue-400">
-              Supported Node Building Blocks
-            </span>
-            <h2 className="mt-1 text-lg font-bold text-white">
-              How FlowPilot Constructs Your Pipelines
-            </h2>
+        {/* Building blocks */}
+        <section className="border-t border-slate-200 pt-8">
+          <div className="mb-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Workflow building blocks</p>
+            <h2 className="mt-1 text-lg font-semibold text-slate-900">Supported step types</h2>
+            <p className="mt-1 text-sm text-slate-600">Generated and manual workflows use the same real execution building blocks.</p>
           </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            {[
-              {
-                type: "TRIGGER",
-                name: "Trigger",
-                desc: "Webhook or payload event entry point",
-                icon: Zap,
-                color: "text-emerald-400",
-                border: "border-emerald-500/30",
-                bg: "bg-emerald-950/60",
-              },
-              {
-                type: "AI",
-                name: "Gemini AI",
-                desc: "Contextual text, summaries, and email generation",
-                icon: Sparkles,
-                color: "text-purple-400",
-                border: "border-purple-500/30",
-                bg: "bg-purple-950/60",
-              },
-              {
-                type: "EMAIL",
-                name: "SMTP Email",
-                desc: "Reliable transactional email dispatch",
-                icon: Mail,
-                color: "text-blue-400",
-                border: "border-blue-500/30",
-                bg: "bg-blue-950/60",
-              },
-              {
-                type: "DELAY",
-                name: "Delay Timer",
-                desc: "Execution pauses & rate limiting",
-                icon: Clock,
-                color: "text-amber-400",
-                border: "border-amber-500/30",
-                bg: "bg-amber-950/60",
-              },
-              {
-                type: "WEBHOOK",
-                name: "Webhook",
-                desc: "HTTP REST sync to external endpoints",
-                icon: Globe,
-                color: "text-pink-400",
-                border: "border-pink-500/30",
-                bg: "bg-pink-950/60",
-              },
-            ].map((node) => {
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            {BUILDING_BLOCKS.map((node) => {
               const Icon = node.icon;
               return (
-                <div
-                  key={node.type}
-                  className="rounded-2xl border border-white/[0.08] bg-dark-900/80 p-4 shadow-card"
-                >
-                  <div
-                    className={`flex h-9 w-9 items-center justify-center rounded-xl border ${node.bg} ${node.color} ${node.border} mb-3 shadow-sm`}
-                  >
+                <div key={node.type} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-700">
                     <Icon className="h-4.5 w-4.5" />
                   </div>
-                  <h4 className="text-xs font-bold text-white">{node.name}</h4>
-                  <p className="mt-1 text-[11px] text-slate-400 leading-relaxed">
-                    {node.desc}
-                  </p>
+                  <div className="mb-1 flex items-center gap-2">
+                    <h3 className="text-sm font-semibold text-slate-900">{node.name}</h3>
+                    <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600">{node.type}</span>
+                  </div>
+                  <p className="text-xs leading-relaxed text-slate-600">{node.desc}</p>
                 </div>
               );
             })}
           </div>
-        </div>
+        </section>
       </div>
     </DashboardShell>
   );
