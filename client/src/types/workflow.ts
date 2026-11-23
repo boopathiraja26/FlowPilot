@@ -39,6 +39,13 @@ export interface WorkflowStep {
 // Workflow
 // =========================================================
 
+export interface WorkflowExecutionActivity {
+  id: string;
+  status: "RUNNING" | "COMPLETED" | "FAILED";
+  startedAt: string;
+  completedAt: string | null;
+}
+
 export interface Workflow {
   id: string;
   title: string;
@@ -48,4 +55,6 @@ export interface Workflow {
   createdAt: string;
   updatedAt: string;
   steps: WorkflowStep[];
+  executionCount?: number;
+  lastExecution?: WorkflowExecutionActivity | null;
 }

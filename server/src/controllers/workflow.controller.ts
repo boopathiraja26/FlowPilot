@@ -12,6 +12,7 @@ import {
   createWorkflow,
   deactivateWorkflow,
   deleteWorkflow,
+  duplicateWorkflow,
   getWorkflowById,
   getWorkflows,
   updateWorkflow,
@@ -159,6 +160,24 @@ export const deactivate = asyncHandler(async (req: Request, res: Response) => {
   res.status(200).json({
     success: true,
     message: "Workflow deactivated successfully",
+    data: { workflow: redactWorkflowSecrets(workflow) },
+  });
+});
+
+
+// =========================================================
+// POST /api/workflows/:id/duplicate
+// =========================================================
+
+export const duplicate = asyncHandler(async (req: Request, res: Response) => {
+  const userId = getUserId(req);
+  const workflowId = parseWorkflowId(req);
+
+  const workflow = await duplicateWorkflow(userId, workflowId);
+
+  res.status(201).json({
+    success: true,
+    message: "Workflow duplicated successfully",
     data: { workflow: redactWorkflowSecrets(workflow) },
   });
 });

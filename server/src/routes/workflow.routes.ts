@@ -5,6 +5,7 @@ import {
   activate,
   create,
   deactivate,
+  duplicate,
   findAll,
   findOne,
   remove,
@@ -21,6 +22,7 @@ router.get("/:id", findOne);
 router.put("/:id", update);
 router.post("/:id/activate", activate);
 router.post("/:id/deactivate", deactivate);
+router.post("/:id/duplicate", duplicate);
 router.delete("/:id", remove);
 
 export default router;
