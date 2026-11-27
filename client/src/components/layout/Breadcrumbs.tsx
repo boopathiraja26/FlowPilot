@@ -52,11 +52,11 @@ export function Breadcrumbs() {
         {crumbs.map((crumb, index) => (
           <li key={crumb.href} className="flex min-w-0 items-center gap-1.5">
             {index > 0 && (
-              <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-300" aria-hidden="true" />
+              <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-300 dark:text-slate-600" aria-hidden="true" />
             )}
             {crumb.isLast ? (
               <span
-                className="truncate font-medium text-slate-900"
+                className="truncate font-medium text-slate-900 dark:text-slate-100"
                 aria-current="page"
                 title={crumb.label}
               >
@@ -65,7 +65,7 @@ export function Breadcrumbs() {
             ) : (
               <Link
                 href={crumb.href}
-                className="truncate text-slate-500 transition-colors hover:text-slate-900"
+                className="truncate text-slate-500 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
                 title={crumb.label}
               >
                 {crumb.label}

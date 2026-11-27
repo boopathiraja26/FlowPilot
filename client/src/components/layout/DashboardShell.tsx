@@ -73,13 +73,13 @@ export function DashboardShell({
 
   if (!isAuthorized) {
     return (
-      <div className="flex min-h-dvh w-full items-center justify-center bg-slate-50 px-4">
-        <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="flex min-h-dvh w-full items-center justify-center bg-slate-50 px-4 dark:bg-slate-950">
+        <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <div className="flex items-center gap-4">
-            <div className="h-10 w-10 animate-spin rounded-full border-2 border-slate-200 border-t-slate-900" />
+            <div className="h-10 w-10 animate-spin rounded-full border-2 border-slate-200 border-t-slate-900 dark:border-slate-700 dark:border-t-slate-100" />
             <div>
-              <p className="text-sm font-semibold text-slate-900">Checking your session</p>
-              <p className="mt-0.5 text-sm text-slate-500">Loading workspace access&hellip;</p>
+              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Checking your session</p>
+              <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">Loading workspace access&hellip;</p>
             </div>
           </div>
         </div>
@@ -88,7 +88,7 @@ export function DashboardShell({
   }
 
   return (
-    <div className="flex min-h-dvh w-full bg-slate-50 text-slate-900">
+    <div className="flex min-h-dvh w-full bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col">
         <Header />
