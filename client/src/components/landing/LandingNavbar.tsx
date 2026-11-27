@@ -5,11 +5,7 @@ import Link from "next/link";
 import { ArrowRight, Menu, X } from "lucide-react";
 import { FlowPilotWordmark } from "./FlowPilotWordmark";
 
-interface LandingNavbarProps {
-  onReplayAnimation?: () => void;
-}
-
-export function LandingNavbar({ onReplayAnimation }: LandingNavbarProps) {
+export function LandingNavbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -18,6 +14,7 @@ export function LandingNavbar({ onReplayAnimation }: LandingNavbarProps) {
       setIsScrolled(window.scrollY > 20);
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
+    handleScroll();
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
@@ -32,40 +29,37 @@ export function LandingNavbar({ onReplayAnimation }: LandingNavbarProps) {
   }, [isMobileMenuOpen]);
 
   const navLinks = [
-    { label: "Features", href: "#features" },
-    { label: "How It Works", href: "#workflow-showcase" },
-    { label: "Use Cases", href: "#use-cases" },
+    { label: "How it works", href: "#how-it-works" },
+    { label: "Templates", href: "#templates" },
+    { label: "Integrations", href: "#integrations" },
+    { label: "FAQ", href: "#questions" },
   ];
 
   return (
     <header
-      className={`sticky top-0 z-40 w-full transition-all duration-200 ${
-        isScrolled
-          ? "border-b border-slate-200/80 bg-white/90 backdrop-blur-md shadow-xs"
-          : "border-b border-transparent bg-transparent"
+      className={`landing-navbar sticky top-0 z-40 w-full transition-all duration-300 ${
+        isScrolled ? "is-scrolled border-b border-ui-border bg-ui-bg/95 backdrop-blur-md" : "is-top border-b border-white/10 bg-[#0b3032]"
       }`}
     >
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        {/* Brand with Typography Wordmark */}
         <div className="flex items-center gap-8">
           <Link
             href="/"
-            className="group flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] rounded-lg"
+            className="group flex items-center rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ui-focus"
             aria-label="FlowPilot Home"
           >
-            <FlowPilotWordmark theme="dark" size="md" />
+            <FlowPilotWordmark theme={isScrolled ? "dark" : "light"} size="md" />
           </Link>
 
-          {/* Desktop Navigation */}
           <nav
             aria-label="Main Navigation"
-            className="hidden md:flex items-center gap-6 text-sm font-medium text-[#4A5E6D]"
+            className={`hidden items-center gap-6 text-sm font-medium md:flex ${isScrolled ? "text-ui-secondary" : "text-white/70"}`}
           >
             {navLinks.map((link) => (
               <a
                 key={link.href}
                 href={link.href}
-                className="transition-colors hover:text-[#17252F]"
+                className={`transition-colors ${isScrolled ? "hover:text-ui-primary" : "hover:text-white"}`}
               >
                 {link.label}
               </a>
@@ -73,23 +67,11 @@ export function LandingNavbar({ onReplayAnimation }: LandingNavbarProps) {
           </nav>
         </div>
 
-        {/* Right Action CTAs */}
         <div className="flex items-center gap-3">
-          {onReplayAnimation && (
-            <button
-              type="button"
-              onClick={onReplayAnimation}
-              className="hidden md:inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-[#4A5E6D] shadow-xs transition-colors hover:bg-slate-50 hover:text-[#17252F]"
-              title="Replay opening sequence"
-            >
-              <span>Replay Intro</span>
-            </button>
-          )}
-
           <Link
             href="/login"
             prefetch={true}
-            className="hidden sm:inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold text-[#17252F] hover:text-[#0D9488] transition-colors focus-visible:ring-2 focus-visible:ring-[#0D9488]"
+            className={`hidden min-h-10 items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ui-focus sm:inline-flex ${isScrolled ? "text-ui-primary hover:text-ui-accent" : "text-white/80 hover:text-white"}`}
           >
             Sign In
           </Link>
@@ -97,45 +79,47 @@ export function LandingNavbar({ onReplayAnimation }: LandingNavbarProps) {
           <Link
             href="/register"
             prefetch={true}
-            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#0D9488] px-4 py-2 text-sm font-semibold text-white shadow-xs transition-all hover:bg-[#0F766E] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-[#0D9488]"
+            className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg bg-[#f3c568] px-4 py-2 text-sm font-semibold text-[#173333] transition-colors hover:bg-[#ffda86] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f3c568] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b3032]"
           >
-            <span>Get Started</span>
+            <span>Start building</span>
             <ArrowRight className="h-3.5 w-3.5" />
           </Link>
 
-          {/* Mobile Menu Hamburger */}
           <button
             type="button"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
             aria-expanded={isMobileMenuOpen}
-            className="flex md:hidden h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:text-[#17252F] hover:bg-slate-50"
+            aria-controls="landing-mobile-navigation"
+            className={`flex h-10 w-10 items-center justify-center rounded-lg border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ui-focus md:hidden ${isScrolled ? "border-ui-border bg-ui-surface text-ui-secondary hover:bg-ui-subtle hover:text-ui-primary" : "border-white/20 bg-white/[0.06] text-white/80 hover:bg-white/10 hover:text-white"}`}
           >
             {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
         </div>
       </div>
 
-      {/* Mobile Drawer */}
       {isMobileMenuOpen && (
-        <div className="md:hidden border-b border-slate-200 bg-white/95 backdrop-blur-xl px-4 py-6 shadow-lg">
+        <div
+          id="landing-mobile-navigation"
+          className={`border-b px-4 py-6 md:hidden ${isScrolled ? "border-ui-border bg-ui-surface" : "border-white/10 bg-[#0b3032]"}`}
+        >
           <nav className="flex flex-col gap-3">
             {navLinks.map((link) => (
               <a
                 key={link.href}
                 href={link.href}
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="rounded-lg px-3 py-2 text-sm font-medium text-[#4A5E6D] hover:bg-slate-100 hover:text-[#17252F]"
+                className={`rounded-lg px-3 py-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ui-focus ${isScrolled ? "text-ui-secondary hover:bg-ui-subtle hover:text-ui-primary" : "text-white/75 hover:bg-white/[0.06] hover:text-white"}`}
               >
                 {link.label}
               </a>
             ))}
-            <div className="mt-4 pt-4 border-t border-slate-200 flex flex-col gap-2">
+            <div className={`mt-4 flex flex-col gap-2 border-t pt-4 ${isScrolled ? "border-ui-divider" : "border-white/10"}`}>
               <Link
                 href="/login"
                 prefetch={true}
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="w-full text-center rounded-xl border border-slate-200 bg-slate-50 py-2.5 text-sm font-semibold text-[#17252F]"
+                className={`min-h-11 w-full rounded-lg border py-2.5 text-center text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ui-focus ${isScrolled ? "border-ui-border bg-ui-surface text-ui-primary" : "border-white/20 bg-white/[0.06] text-white"}`}
               >
                 Sign In
               </Link>
@@ -143,9 +127,9 @@ export function LandingNavbar({ onReplayAnimation }: LandingNavbarProps) {
                 href="/register"
                 prefetch={true}
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="w-full text-center rounded-xl bg-[#0D9488] py-2.5 text-sm font-semibold text-white shadow-xs"
+                className="min-h-11 w-full rounded-lg bg-[#f3c568] py-2.5 text-center text-sm font-semibold text-[#173333] hover:bg-[#ffda86] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f3c568]"
               >
-                Start Building Free
+                Start building
               </Link>
             </div>
           </nav>

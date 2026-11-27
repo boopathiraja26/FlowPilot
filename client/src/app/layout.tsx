@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
+import "./landing.css";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -21,13 +22,28 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`scroll-smooth ${inter.variable}`} suppressHydrationWarning>
-      <Script id="sidebar-preference-bootstrap" strategy="beforeInteractive">
-        {`try {
-          document.documentElement.dataset.sidebarCollapsed =
-            localStorage.getItem("flowpilot_sidebar_collapsed") === "1" ? "true" : "false";
-        } catch {}`}
-      </Script>
+    <html
+      lang="en"
+      className={`scroll-smooth ${inter.variable}`}
+    >
+      <head>
+        <style id="sidebar-preference-styles" />
+        <Script id="sidebar-preference-bootstrap" strategy="beforeInteractive">
+          {`let sidebarCollapsed = false;
+          try {
+            sidebarCollapsed = localStorage.getItem("flowpilot_sidebar_collapsed") === "1";
+          } catch {}
+          if (sidebarCollapsed) {
+            const sidebarStylesheet =
+              document.getElementById("sidebar-preference-styles")?.sheet;
+            if (sidebarStylesheet) {
+              sidebarStylesheet.insertRule(":root { --sidebar-width: 72px; }");
+            } else {
+              console.error("Could not initialize the sidebar preference stylesheet.");
+            }
+          }`}
+        </Script>
+      </head>
       <body className={`${inter.className} min-h-screen bg-slate-50 text-slate-900 antialiased`}>
         {children}
       </body>

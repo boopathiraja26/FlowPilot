@@ -25,13 +25,13 @@ export function FlowPilotWordmark({
       className={`inline-flex items-center select-none font-bold font-sans ${sizeClasses} ${className}`}
       aria-label="FlowPilot"
     >
-      <span className={isLight ? "text-white" : "text-[#101C2C]"}>
+      <span className={isLight ? "text-white" : "text-ui-primary"}>
         Flow
       </span>
-      <span className="text-[#0D9488] font-extrabold ml-0.5">
+      <span className="ml-0.5 font-extrabold text-ui-accent">
         Pilot
       </span>
-      <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#0D9488] ml-1 mb-1" />
+      <span className="mb-1 ml-1 inline-block h-1.5 w-1.5 rounded-full bg-ui-accent" />
     </div>
   );
 }

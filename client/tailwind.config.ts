@@ -10,7 +10,26 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Light-first SaaS system colors
+        ui: {
+          bg: "rgb(var(--ui-bg) / <alpha-value>)",
+          surface: "rgb(var(--ui-surface) / <alpha-value>)",
+          subtle: "rgb(var(--ui-surface-subtle) / <alpha-value>)",
+          raised: "rgb(var(--ui-surface-raised) / <alpha-value>)",
+          primary: "rgb(var(--ui-text-primary) / <alpha-value>)",
+          secondary: "rgb(var(--ui-text-secondary) / <alpha-value>)",
+          muted: "rgb(var(--ui-text-muted) / <alpha-value>)",
+          border: "rgb(var(--ui-border) / <alpha-value>)",
+          divider: "rgb(var(--ui-divider) / <alpha-value>)",
+          accent: "rgb(var(--ui-accent) / <alpha-value>)",
+          "accent-hover": "rgb(var(--ui-accent-hover) / <alpha-value>)",
+          focus: "rgb(var(--ui-focus) / <alpha-value>)",
+          success: "rgb(var(--ui-success) / <alpha-value>)",
+          warning: "rgb(var(--ui-warning) / <alpha-value>)",
+          danger: "rgb(var(--ui-danger) / <alpha-value>)",
+          info: "rgb(var(--ui-info) / <alpha-value>)",
+          sidebar: "rgb(var(--ui-sidebar) / <alpha-value>)",
+          canvas: "rgb(var(--ui-canvas) / <alpha-value>)",
+        },
         surface: {
           50: "#F8FAFC",
           100: "#F1F5F9",
