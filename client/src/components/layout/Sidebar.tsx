@@ -309,9 +309,11 @@ export function Sidebar() {
     };
   }, [isMobileSidebarOpen, closeMobileSidebar]);
 
-  // Keep the server and initial client render consistent, then apply the saved preference.
+  // The beforeInteractive bootstrap applies this CSS variable before first paint;
+  // the store then hydrates without changing the computed initial width.
   const effectiveCollapsed = hasHydratedSidebarPreference ? isSidebarCollapsed : false;
   const railWidth = effectiveCollapsed ? 72 : 256;
+  const sidebarWidth = hasHydratedSidebarPreference ? railWidth : "var(--sidebar-width)";
 
   return (
     <>
@@ -319,7 +321,7 @@ export function Sidebar() {
       <aside
         aria-label="Main navigation"
         className="sticky top-0 z-30 hidden h-dvh shrink-0 border-r border-slate-200 bg-white transition-[width] duration-200 ease-out motion-reduce:transition-none dark:border-slate-800 dark:bg-slate-950 lg:block"
-        style={{ width: railWidth }}
+        style={{ width: sidebarWidth }}
       >
         <SidebarPanel
           collapsed={effectiveCollapsed}
@@ -343,6 +345,7 @@ export function Sidebar() {
           aria-modal="true"
           aria-label="Navigation menu"
           tabIndex={-1}
+          inert={!isMobileSidebarOpen}
           className={`absolute inset-y-0 left-0 h-dvh w-[280px] max-w-[86vw] border-r border-slate-200 bg-white shadow-2xl transition-transform duration-200 ease-out motion-reduce:transition-none dark:border-slate-800 dark:bg-slate-950 ${
             isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full"
           }`}

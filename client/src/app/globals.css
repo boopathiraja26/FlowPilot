@@ -3,6 +3,7 @@
 @tailwind utilities;
 
 :root {
+  --sidebar-width: 256px;
   --background: #f8fafc;
   --foreground: #0f172a;
   --card-bg: #ffffff;
@@ -11,6 +12,10 @@
   --brand-primary-hover: #1d4ed8;
   --muted: #64748b;
   --ring: rgba(37, 99, 235, 0.35);
+}
+
+:root[data-sidebar-collapsed="true"] {
+  --sidebar-width: 72px;
 }
 
 body {
